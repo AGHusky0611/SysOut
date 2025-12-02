@@ -9,29 +9,59 @@ document.addEventListener('DOMContentLoaded', () => {
     // **FIX: MOVE THE PROTECTION LOGIC INSIDE DOMContentLoaded**
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!currentUser || currentUser.role !== 'admin') {
-        console.error("Access Denied: Not an admin. Redirecting.");
-        window.location.href = 'index.html';
+        window.location.href = 'index.html'; // Redirect non-admins
         return; // Stop execution
+    }
+
+    // --- HELPER FUNCTIONS ---
+    function getGcashFee(amount) {
+        if (amount <= 250) return 5;
+        if (amount <= 500) return 10;
+        if (amount <= 1000) return 20;
+        if (amount <= 1500) return 30;
+        if (amount <= 2000) return 40;
+        if (amount <= 2500) return 50;
+        if (amount <= 3000) return 60;
+        if (amount <= 3500) return 70;
+        if (amount <= 4000) return 80;
+        if (amount <= 4500) return 90;
+        if (amount <= 5000) return 100;
+        if (amount <= 5500) return 110;
+        if (amount <= 6000) return 120;
+        if (amount <= 6500) return 130;
+        if (amount <= 7000) return 140;
+        if (amount <= 7500) return 150;
+        if (amount <= 8000) return 160;
+        if (amount <= 8500) return 170;
+        if (amount <= 9000) return 180;
+        if (amount <= 9500) return 190;
+        if (amount <= 10000) return 200;
+        if (amount <= 11000) return 220;
+        return 220; // Default for amounts over 11,000
     }
 
     // --- SETTINGS FUNCTIONS ---
 
-    // Load and display all system settings
+    // Load and display all gcash settings
     async function loadGcashSettings() {
         const balanceDisplay = document.getElementById('current-gcash-balance');
-        const feeInput = document.getElementById('service-fee');
         try {
             const settingsRef = doc(db, "settings", "gcash");
             const settingsSnap = await getDoc(settingsRef);
             if (settingsSnap.exists()) {
                 const settings = settingsSnap.data();
-                balanceDisplay.textContent = `₱${(settings.balance || 0).toFixed(2)}`;
-                feeInput.value = (settings.serviceFee || 0).toFixed(2);
+                // Defensive check: Ensure balance is a valid number before formatting
+                const balance = parseFloat(settings.balance);
+                if (!isNaN(balance)) {
+                    balanceDisplay.textContent = `₱${balance.toFixed(2)}`;
+                } else {
+                    balanceDisplay.textContent = "Invalid Data"; // Handle non-numeric data
+                }
             } else {
                 balanceDisplay.textContent = "₱0.00";
             }
         } catch (error) {
-            console.error("Error loading system settings:", error);
+            console.error("Error loading gcash settings:", error);
             balanceDisplay.textContent = "Error";
         }
     }
@@ -42,7 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const settingsRef = doc(db, "settings", "printing");
             const settingsSnap = await getDoc(settingsRef);
             if (settingsSnap.exists()) {
-                balanceDisplay.textContent = `₱${(settingsSnap.data().balance || 0).toFixed(2)}`;
+                const printingSettings = settingsSnap.data();
+                // Defensive check: Ensure balance is a valid number before formatting
+                const balance = parseFloat(printingSettings.balance);
+                if (!isNaN(balance)) {
+                    balanceDisplay.textContent = `₱${balance.toFixed(2)}`;
+                } else {
+                    balanceDisplay.textContent = "Invalid Data"; // Handle non-numeric data
+                }
             } else {
                  balanceDisplay.textContent = "₱0.00";
             }
@@ -52,22 +89,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Load and display printing prices
-    async function loadPrintPrices() {
+    // Load and display service prices
+    async function loadServicePrices() {
         try {
-            const pricesRef = doc(db, "settings", "printRates");
+            const pricesRef = doc(db, "settings", "servicePrices");
             const pricesSnap = await getDoc(pricesRef);
             if (pricesSnap.exists()) {
                 const prices = pricesSnap.data();
-                document.getElementById('price-a4-bw').value = prices.a4_bw || 0;
-                document.getElementById('price-a4-color').value = prices.a4_color || 0;
-                document.getElementById('price-letter-bw').value = prices.letter_bw || 0;
-                document.getElementById('price-letter-color').value = prices.letter_color || 0;
-                document.getElementById('price-legal-bw').value = prices.legal_bw || 0;
-                document.getElementById('price-legal-color').value = prices.legal_color || 0;
+                // Loop through all keys in the prices object and set input values
+                for (const key in prices) {
+                    const input = document.getElementById(`price_${key}`);
+                    if (input) {
+                        input.value = prices[key];
+                    }
+                }
             }
         } catch (error) {
-            console.error("Error loading print prices:", error);
+            console.error("Error loading service prices:", error);
         }
     }
 
@@ -149,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAndDisplayUsers();
     loadGcashSettings();
     loadPrintingSettings();
-    loadPrintPrices();
+    loadServicePrices();
 
     // Logout
     const logoutBtn = document.getElementById('logoutBtn');
@@ -214,31 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Handle GCash Fee Update
-    const gcashFeeForm = document.getElementById('gcash-fee-form');
-    if (gcashFeeForm) {
-        gcashFeeForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const messageEl = document.getElementById('fee-message');
-            const newFee = parseFloat(document.getElementById('service-fee').value);
-
-             if (isNaN(newFee) || newFee < 0) {
-                messageEl.textContent = "Please enter a valid fee.";
-                return;
-            }
-
-            try {
-                await setDoc(doc(db, "settings", "gcash"), { serviceFee: newFee }, { merge: true });
-                messageEl.textContent = "Fee updated successfully!";
-                loadGcashSettings(); // Refresh display
-            } catch (error) {
-                console.error("Error updating fee:", error);
-                messageEl.textContent = "Failed to update fee.";
-            }
-            setTimeout(() => messageEl.textContent = '', 3000);
-        });
-    }
-
     // Handle Printing Balance Update
     const printingBalanceForm = document.getElementById('printing-balance-form');
     if(printingBalanceForm) {
@@ -265,24 +278,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Handle Printing Prices Update
-    const pricesForm = document.getElementById('printing-prices-form');
+    // Handle Service Prices Update
+    const pricesForm = document.getElementById('service-prices-form');
     if (pricesForm) {
         pricesForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const messageEl = document.getElementById('pricing-message');
-            
-            const prices = {
-                a4_bw: parseFloat(document.getElementById('price-a4-bw').value),
-                a4_color: parseFloat(document.getElementById('price-a4-color').value),
-                letter_bw: parseFloat(document.getElementById('price-letter-bw').value),
-                letter_color: parseFloat(document.getElementById('price-letter-color').value),
-                legal_bw: parseFloat(document.getElementById('price-legal-bw').value),
-                legal_color: parseFloat(document.getElementById('price-legal-color').value)
-            };
+            const priceInputs = pricesForm.querySelectorAll('input[type="number"]');
+            const prices = {};
+
+            priceInputs.forEach(input => {
+                const key = input.id.replace('price_', ''); // e.g., "price_printing_bw_letter" -> "printing_bw_letter"
+                const value = parseFloat(input.value);
+                if (!isNaN(value)) {
+                    prices[key] = value;
+                }
+            });
 
             try {
-                await setDoc(doc(db, "settings", "printRates"), prices);
+                await setDoc(doc(db, "settings", "servicePrices"), prices);
                 messageEl.textContent = "Prices saved successfully!";
             } catch (error) {
                 console.error("Error updating prices:", error);
@@ -290,12 +304,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             setTimeout(() => messageEl.textContent = '', 3000);
         });
-    }
-
-    // Export Button Listener
-    const exportBtn = document.getElementById('export-excel-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportTransactionsToExcel);
     }
 
 
@@ -376,5 +384,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+    }
+
+    // --- GCASH FEE CHECKER ---
+    const checkAmountInput = document.getElementById('check-amount');
+    const calculatedFeeDisplay = document.getElementById('calculated-fee-display');
+
+    if (checkAmountInput && calculatedFeeDisplay) {
+        checkAmountInput.addEventListener('input', () => {
+            const amount = parseFloat(checkAmountInput.value);
+            if (isNaN(amount) || amount <= 0) {
+                calculatedFeeDisplay.textContent = '₱0.00';
+                return;
+            }
+            const fee = getGcashFee(amount);
+            calculatedFeeDisplay.textContent = `₱${fee.toFixed(2)}`;
+        });
+    }
+
+    // Export Button Listener
+    const exportBtn = document.getElementById('export-excel-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportTransactionsToExcel);
     }
 });

@@ -18,86 +18,224 @@
     </header>
 
     <div class="main-container">
-        <!-- Left column for POS controls -->
-        <div class="pos-controls">
-            <!-- GCash POS Card -->
-            <section class="card">
-                <h2>GCash POS</h2>
-                <p>Current Balance: <strong id="current-gcash-balance">Loading...</strong></p>
-                <form id="gcash-form">
-                    <div class="input-group">
-                        <label for="gcash-amount">Amount (₱)</label>
-                        <input type="number" id="gcash-amount" placeholder="e.g., 1000" step="0.01" required>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" id="cash-in-btn" class="g-cash-btn cash-in">Cash In</button>
-                        <button type="button" id="cash-out-btn" class="g-cash-btn cash-out">Cash Out</button>
-                    </div>
-                </form>
-            </section>
+        <!-- Dashboard Summary Section -->
+        <section class="dashboard-grid">
+            <div class="summary-card">
+                <h3>GCash Balance</h3>
+                <p id="dashboard-gcash-balance">Loading...</p>
+                <span>The current total balance in the GCash account.</span>
+            </div>
+            <div class="summary-card">
+                <h3>Today's Service Sales</h3>
+                <p id="today-service-sales">₱0.00</p>
+                <span>Total revenue from all services today.</span>
+            </div>
+            <div class="summary-card">
+                <h3>Today's GCash Fees</h3>
+                <p id="today-gcash-fees">₱0.00</p>
+                <span>Total fees earned from GCash transactions today.</span>
+            </div>
+            <div class="summary-card">
+                <h3>Today's Transactions</h3>
+                <p id="today-transaction-count">0</p>
+                <span>Total number of completed transactions today.</span>
+            </div>
+        </section>
 
-            <!-- Printing POS Card -->
-            <section class="card">
-                <h2>Printing POS</h2>
-                <form id="print-job-form">
-                    <div class="form-grid">
+        <!-- POS System Section (Collapsible) -->
+        <details class="pos-section-details" open>
+            <summary>
+                <h2>Point of Sale System</h2>
+            </summary>
+            <div class="pos-grid">
+                <!-- Left column for POS controls -->
+                <div class="pos-controls">
+                    <!-- GCash POS Card -->
+                    <section class="card">
+                        <h2>GCash POS</h2>
+                        <p>Current Balance: <strong id="pos-gcash-balance">Loading...</strong></p>
+                        <form id="gcash-form">
+                            <div class="input-group">
+                                <label for="gcash-amount">Amount (₱)</label>
+                                <input type="number" id="gcash-amount" placeholder="e.g., 1000" step="0.01" required>
+                            </div>
+                            <p class="fee-display">Service Fee: <strong id="gcash-fee-display">₱0.00</strong></p>
+                            <div class="button-group">
+                                <button type="button" id="cash-in-btn" class="g-cash-btn cash-in">Cash In</button>
+                                <button type="button" id="cash-out-btn" class="g-cash-btn cash-out">Cash Out</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- Services POS -->
+                    <section class="card">
+                        <h2>Services POS</h2>
                         <div class="input-group">
-                            <label for="paper-size">Paper Size</label>
-                            <select id="paper-size" required>
-                                <option value="a4">A4</option>
-                                <option value="letter">Letter</option>
-                                <option value="legal">Legal</option>
+                            <label for="service-type">Select Service</label>
+                            <select id="service-type">
+                                <option value="printing">Document Printing</option>
+                                <option value="photocopy">Photocopy</option>
+                                <option value="scan">Scan</option>
+                                <option value="lamination">Lamination</option>
+                                <option value="pvc">PVC ID</option>
                             </select>
                         </div>
-                        <div class="input-group">
-                            <label for="print-type">Print Type</label>
-                            <select id="print-type" required>
-                                <option value="bw">Black & White</option>
-                                <option value="color">Colored</option>
-                            </select>
-                        </div>
-                        <div class="input-group full-span">
-                            <label for="page-count">Number of Pages</label>
-                            <input type="number" id="page-count" min="1" value="1" required>
-                        </div>
-                    </div>
-                    <button type="submit" class="add-job-btn">Add Print Job</button>
-                </form>
-            </section>
-        </div>
 
-        <!-- Right column for the current transaction -->
-        <div class="transaction-summary">
-            <section class="card receipt-card">
-                <h2>Current Transaction</h2>
-                <ul id="transaction-items" class="transaction-list">
-                    <!-- Items will be added here by JS -->
-                    <li class="placeholder">Add items to begin a transaction.</li>
-                </ul>
-                <div class="totals">
-                    <div class="total-row">
-                        <span>Subtotal</span>
-                        <span id="subtotal">₱0.00</span>
-                    </div>
-                    <div class="total-row">
-                        <span>Service Fee</span>
-                        <span id="service-fee">₱0.00</span>
-                    </div>
-                    <div class="total-row grand-total">
-                        <span>Total Amount</span>
-                        <span id="grand-total">₱0.00</span>
-                    </div>
-                </div>
-                <div class="button-group-column">
-                    <button id="complete-payment-btn" class="payment-btn">Complete Payment</button>
-                    <button id="clear-transaction-btn" class="clear-btn">Clear Transaction</button>
-                </div>
-                <p id="transaction-message" class="form-message"></p>
-            </section>
-        </div>
-    </div>
+                        <!-- Form for Printing / Photocopy -->
+                        <form id="form-printing" class="service-form">
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label for="print-paper-size">Paper Size</label>
+                                    <select id="print-paper-size">
+                                        <option value="letter">Letter</option>
+                                        <option value="a4">A4</option>
+                                        <option value="legal">Legal</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="print-type">Print Type</label>
+                                    <select id="print-type">
+                                        <option value="bw">Black & White</option>
+                                        <option value="color">Colored</option>
+                                    </select>
+                                </div>
+                                <div class="input-group full-span">
+                                    <label for="print-pages">Number of Pages</label>
+                                    <input type="number" id="print-pages" min="1" value="1" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="add-job-btn">Add to Transaction</button>
+                        </form>
 
-    <script type="module" src="js/firebase-init.js"></script>
-    <script type="module" src="js/user.js"></script>
+                        <!-- Form for Scanning -->
+                        <form id="form-scan" class="service-form" style="display: none;">
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label for="scan-type">Scan Type</label>
+                                    <select id="scan-type">
+                                        <option value="only">Scan Only</option>
+                                        <option value="ecopy">Scan + E-Copy</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="scan-paper-size">Paper Size</label>
+                                    <select id="scan-paper-size">
+                                        <option value="letter">Letter</option>
+                                        <option value="a4">A4</option>
+                                        <option value="legal">Legal</option>
+                                    </select>
+                                </div>
+                                <div class="input-group full-span">
+                                    <label for="scan-pages">Number of Pages</label>
+                                    <input type="number" id="scan-pages" min="1" value="1" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="add-job-btn">Add to Transaction</button>
+                        </form>
+
+                         <!-- Form for Lamination -->
+                        <form id="form-lamination" class="service-form" style="display: none;">
+                            <div class="input-group">
+                                <label for="lamination-size">Size</label>
+                                <select id="lamination-size">
+                                    <option value="whole_a4">Whole A4</option>
+                                    <option value="half_a4">Half A4</option>
+                                    <option value="quarter_a4">1/4 A4</option>
+                                </select>
+                            </div>
+                             <div class="input-group">
+                                <label for="lamination-qty">Quantity</label>
+                                <input type="number" id="lamination-qty" min="1" value="1" required>
+                            </div>
+                            <button type="submit" class="add-job-btn">Add to Transaction</button>
+                        </form>
+
+                        <!-- Form for PVC ID -->
+                        <form id="form-pvc" class="service-form" style="display: none;">
+                            <div class="form-grid">
+                                 <div class="input-group">
+                                <label for="pvc-type">Print Type</label>
+                                <select id="pvc-type">
+                                    <option value="front">Front Only</option>
+                                    <option value="back">Back-to-Back</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="pvc-edit">With Edit?</label>
+                                 <select id="pvc-edit">
+                                    <option value="no">No</option>
+                                    <option value="yes">Yes</option>
+                                </select>
+                            </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="pvc-qty">Quantity (Min. 10)</label>
+                                <input type="number" id="pvc-qty" min="1" value="10" required>
+                            </div>
+                            <button type="submit" class="add-job-btn">Add to Transaction</button>
+                        </form>
+                    </section>
+                </div>
+
+                <!-- Right column for the current transaction -->
+                <div class="transaction-summary">
+                    <section class="card receipt-card">
+                        <h2>Current Transaction</h2>
+                        <ul id="transaction-items" class="transaction-list">
+                            <!-- Items will be added here by JS -->
+                            <li class="placeholder">Add items to begin a transaction.</li>
+                        </ul>
+                        <div class="totals">
+                            <div class="total-row">
+                                <span>Subtotal</span>
+                                <span id="subtotal">₱0.00</span>
+                            </div>
+                            <div class="total-row">
+                                <span>Service Fee</span>
+                                <span id="service-fee">₱0.00</span>
+                            </div>
+                            <div class="total-row grand-total">
+                                <span>Total Amount</span>
+                                <span id="grand-total">₱0.00</span>
+                            </div>
+                        </div>
+                        <div class="button-group-column">
+                            <button id="complete-payment-btn" class="payment-btn">Complete Payment</button>
+                            <button id="clear-transaction-btn" class="clear-btn">Clear Transaction</button>
+                            <button id="end-of-shift-report-btn" class="clear-btn" style="margin-top: 0.5rem;">End of Shift Report</button>
+                        </div>
+                        <p id="transaction-message" class="form-message"></p>
+                    </section>
+                </div>
+            </div>
+        </details>
+
+        <!-- Recent Activity Section -->
+        <section class="card">
+            <h2>Recent Activity (Today)</h2>
+            <div class="table-container">
+                <table id="recent-transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows will be inserted here by JS -->
+                        <tr><td colspan="3">Loading transactions...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+</div>
+
+<!-- External Libraries - Make sure this is present and before user.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- Firebase SDKs -->
+<script type="module" src="./js/firebase-init.js"></script>
+<script type="module" src="./js/user.js"></script>
 </body>
 </html>

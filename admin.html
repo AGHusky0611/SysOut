@@ -46,14 +46,15 @@
                             <button type="submit">Update Balance</button>
                             <p id="gcash-message" class="form-message"></p>
                         </form>
-                        <form id="gcash-fee-form" class="sub-form">
-                             <div class="input-group">
-                                <label for="service-fee">Service Fee (₱)</label>
-                                <input type="number" id="service-fee" name="service-fee" step="0.01" placeholder="e.g., 15.00" required>
+
+                        <div class="fee-checker">
+                            <h4 class="form-divider">GCash Fee Checker</h4>
+                            <div class="input-group">
+                                <label for="check-amount">Enter Amount to Check Fee</label>
+                                <input type="number" id="check-amount" placeholder="e.g., 1500" step="0.01">
                             </div>
-                            <button type="submit">Save Fee</button>
-                            <p id="fee-message" class="form-message"></p>
-                        </form>
+                            <p class="fee-display">Calculated Fee: <strong id="calculated-fee-display">₱0.00</strong></p>
+                        </div>
                     </div>
                     <!-- Printing Sales & Prices -->
                     <div class="setting-card">
@@ -68,35 +69,55 @@
                              <p id="printing-balance-message" class="form-message"></p>
                         </form>
 
-                        <h3 style="margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">Printing Prices</h3>
-                        <form id="printing-prices-form">
+                        <h3 class="form-divider">Service Prices</h3>
+                        <form id="service-prices-form">
+                            <!-- Document Printing -->
+                            <h4>Document Printing</h4>
                             <div class="price-grid">
-                                <div class="input-group">
-                                    <label for="price-a4-bw">A4 B&W</label>
-                                    <input type="number" id="price-a4-bw" step="0.01" required>
-                                </div>
-                                <div class="input-group">
-                                    <label for="price-a4-color">A4 Color</label>
-                                    <input type="number" id="price-a4-color" step="0.01" required>
-                                </div>
-                                <div class="input-group">
-                                    <label for="price-letter-bw">Letter B&W</label>
-                                    <input type="number" id="price-letter-bw" step="0.01" required>
-                                </div>
-                                <div class="input-group">
-                                    <label for="price-letter-color">Letter Color</label>
-                                    <input type="number" id="price-letter-color" step="0.01" required>
-                                </div>
-                                 <div class="input-group">
-                                    <label for="price-legal-bw">Legal B&W</label>
-                                    <input type="number" id="price-legal-bw" step="0.01" required>
-                                </div>
-                                <div class="input-group">
-                                    <label for="price-legal-color">Legal Color</label>
-                                    <input type="number" id="price-legal-color" step="0.01" required>
-                                </div>
+                                <input type="number" id="price_printing_bw_letter" placeholder="Letter B&W">
+                                <input type="number" id="price_printing_color_letter" placeholder="Letter Color">
+                                <input type="number" id="price_printing_bw_a4" placeholder="A4 B&W">
+                                <input type="number" id="price_printing_color_a4" placeholder="A4 Color">
+                                <input type="number" id="price_printing_bw_legal" placeholder="Legal B&W">
+                                <input type="number" id="price_printing_color_legal" placeholder="Legal Color">
                             </div>
-                            <button type="submit">Save Prices</button>
+                            <!-- Photocopy -->
+                            <h4 class="form-divider">Photocopy</h4>
+                             <div class="price-grid">
+                                <input type="number" id="price_photocopy_bw_letter" placeholder="Letter B&W">
+                                <input type="number" id="price_photocopy_color_letter" placeholder="Letter Color">
+                                <input type="number" id="price_photocopy_bw_a4" placeholder="A4 B&W">
+                                <input type="number" id="price_photocopy_color_a4" placeholder="A4 Color">
+                                <input type="number" id="price_photocopy_bw_legal" placeholder="Legal B&W">
+                                <input type="number" id="price_photocopy_color_legal" placeholder="Legal Color">
+                            </div>
+                            <!-- Scan -->
+                            <h4 class="form-divider">Scan</h4>
+                             <div class="price-grid">
+                                <input type="number" id="price_scan_only_letter" placeholder="Scan Only Letter">
+                                <input type="number" id="price_scan_ecopy_letter" placeholder="Scan+E-Copy Letter">
+                                <input type="number" id="price_scan_only_a4" placeholder="Scan Only A4">
+                                <input type="number" id="price_scan_ecopy_a4" placeholder="Scan+E-Copy A4">
+                                <input type="number" id="price_scan_only_legal" placeholder="Scan Only Legal">
+                                <input type="number" id="price_scan_ecopy_legal" placeholder="Scan+E-Copy Legal">
+                            </div>
+                            <!-- Lamination -->
+                             <h4 class="form-divider">Lamination</h4>
+                             <div class="price-grid three-col">
+                                <input type="number" id="price_lamination_whole_a4" placeholder="Whole A4">
+                                <input type="number" id="price_lamination_half_a4" placeholder="Half A4">
+                                <input type="number" id="price_lamination_quarter_a4" placeholder="1/4 A4">
+                            </div>
+                            <!-- PVC ID -->
+                             <h4 class="form-divider">PVC ID</h4>
+                             <div class="price-grid">
+                                <input type="number" id="price_pvc_front_print" placeholder="Front Print">
+                                <input type="number" id="price_pvc_front_edit" placeholder="Front w/Edit">
+                                <input type="number" id="price_pvc_back_print" placeholder="Back-to-Back Print">
+                                <input type="number" id="price_pvc_back_edit" placeholder="Back-to-Back w/Edit">
+                            </div>
+
+                            <button type="submit" style="margin-top: 1.5rem;">Save All Prices</button>
                             <p id="pricing-message" class="form-message"></p>
                         </form>
                     </div>
