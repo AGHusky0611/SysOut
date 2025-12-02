@@ -1,5 +1,17 @@
 import { db } from './firebase-init.js';
-import { doc, getDoc, runTransaction, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+    collection, 
+    query, 
+    where, 
+    orderBy, 
+    getDocs, 
+    getDoc, 
+    doc, 
+    addDoc, 
+    Timestamp, 
+    runTransaction, 
+    serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- AUTHENTICATION & INITIALIZATION ---
@@ -36,16 +48,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DATA FETCHING ---
     async function loadInitialData() {
         try {
-            // Fetch Service Prices
-            const pricesRef = doc(db, "settings", "servicePrices");
-            const pricesSnap = await getDoc(pricesRef);
+            // 1. Correct the document name from "prices" to "servicePrices"
+            const pricesDocRef = doc(db, "settings", "servicePrices");
+            const pricesSnap = await getDoc(pricesDocRef);
+
             if (pricesSnap.exists()) {
                 servicePrices = pricesSnap.data();
+                // Log to console for easy debugging to see if prices loaded
+                console.log("Service prices loaded successfully:", servicePrices);
             } else {
-                console.error("Service prices not found!");
+                console.error("CRITICAL: The 'prices' document was not found in 'settings' collection.");
+                alert("Could not load service prices from the database. Service POS will be disabled. Please contact an administrator.");
+                // Disable all service forms if prices cannot be loaded
+                document.querySelectorAll('.service-form button').forEach(btn => btn.disabled = true);
+                document.querySelectorAll('.service-form input, .service-form select').forEach(input => input.disabled = true);
             }
         } catch (error) {
-            console.error("Error loading initial data:", error);
+            console.error("Error during loadInitialData:", error);
+            alert("A critical error occurred while loading initial price data. Check the console for more details.");
         }
     }
 
@@ -222,18 +242,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const serviceType = document.getElementById('service-type').value;
         let item = null;
 
+        // Check if prices have been loaded at all.
+        if (!servicePrices || Object.keys(servicePrices).length === 0) {
+             alert("Service prices have not been loaded from the database. Please refresh.");
+             return;
+        }
+
         try {
             switch (serviceType) {
                 case 'printing':
                 case 'photocopy': {
-                    const paperSize = document.getElementById('print-paper-size').value;
-                    const printType = document.getElementById('print-type').value;
+                    const paperSize = document.getElementById('print-paper-size').value; // e.g., 'a4'
+                    const printType = document.getElementById('print-type').value;     // e.g., 'bw'
                     const pages = parseInt(document.getElementById('print-pages').value, 10);
                     if (isNaN(pages) || pages <= 0) return alert("Invalid number of pages.");
 
-                    const priceKey = `${paperSize}_${printType}`;
-                    const pricePerPage = servicePrices.printing[priceKey];
-                    if (typeof pricePerPage === 'undefined') throw new Error(`Price for ${priceKey} not set.`);
+                    // 2. Build the key to match your flat Firestore structure
+                    const priceKey = `${serviceType}_${printType}_${paperSize}`; // e.g., "printing_bw_a4"
+                    const pricePerPage = servicePrices[priceKey];
+                    
+                    if (typeof pricePerPage === 'undefined') {
+                        throw new Error(`Price for '${priceKey}' is not set in your Firestore 'servicePrices' document.`);
+                    }
                     
                     const total = pricePerPage * pages;
                     const description = `${serviceType === 'photocopy' ? 'Photocopy' : 'Printing'}: ${pages} pg(s) (${paperSize}, ${printType === 'bw' ? 'B&W' : 'Color'})`;
@@ -242,12 +272,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 case 'scan': {
-                    const scanType = document.getElementById('scan-type').value;
+                    const scanType = document.getElementById('scan-type').value; // e.g., "scan_only"
                     const pages = parseInt(document.getElementById('scan-pages').value, 10);
                     if (isNaN(pages) || pages <= 0) return alert("Invalid number of pages.");
 
-                    const pricePerPage = servicePrices.scan[scanType];
-                    if (typeof pricePerPage === 'undefined') throw new Error(`Price for scan type ${scanType} not set.`);
+                    // Assumes you have fields like "scan_only" and "ecopy" in Firestore
+                    const pricePerPage = servicePrices[scanType];
+                    if (typeof pricePerPage === 'undefined') {
+                        throw new Error(`Price for scan type '${scanType}' is not set in Firestore.`);
+                    }
 
                     const total = pricePerPage * pages;
                     const description = `Scan: ${pages} pg(s) (${scanType === 'ecopy' ? 'with E-Copy' : 'Scan Only'})`;
@@ -256,12 +289,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 case 'lamination': {
-                    const size = document.getElementById('lamination-size').value;
+                    const size = document.getElementById('lamination-size').value; // e.g., "small"
                     const qty = parseInt(document.getElementById('lamination-qty').value, 10);
                     if (isNaN(qty) || qty <= 0) return alert("Invalid quantity.");
 
-                    const pricePerPiece = servicePrices.lamination[size];
-                    if (typeof pricePerPiece === 'undefined') throw new Error(`Price for lamination size ${size} not set.`);
+                    // Assumes you have fields like "lamination_small" in Firestore
+                    const priceKey = `lamination_${size}`;
+                    const pricePerPiece = servicePrices[priceKey];
+                    if (typeof pricePerPiece === 'undefined') {
+                        throw new Error(`Price for lamination size '${priceKey}' is not set in Firestore.`);
+                    }
                     
                     const total = pricePerPiece * qty;
                     const description = `Lamination: ${qty} pc(s) (${size.replace('_', ' ')})`;
@@ -270,16 +307,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 case 'pvc': {
-                    const pvcType = document.getElementById('pvc-type').value;
+                    const pvcType = document.getElementById('pvc-type').value; // e.g., "front"
                     const withEdit = document.getElementById('pvc-edit').value;
                     const qty = parseInt(document.getElementById('pvc-qty').value, 10);
                     if (isNaN(qty) || qty <= 0) return alert("Invalid quantity.");
 
-                    let pricePerPiece = servicePrices.pvc[pvcType];
-                    if (typeof pricePerPiece === 'undefined') throw new Error(`Price for PVC type ${pvcType} not set.`);
+                    // Assumes fields like "pvc_front", "pvc_back", and "pvc_edit" in Firestore
+                    const priceKey = `pvc_${pvcType}`;
+                    let pricePerPiece = servicePrices[priceKey];
+                    if (typeof pricePerPiece === 'undefined') {
+                        throw new Error(`Price for PVC type '${priceKey}' is not set in Firestore.`);
+                    }
 
                     if (withEdit === 'yes') {
-                        pricePerPiece += (servicePrices.pvc.edit || 0);
+                        pricePerPiece += (servicePrices.pvc_edit || 0);
                     }
 
                     const total = pricePerPiece * qty;
@@ -300,10 +341,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 currentTransactionItems.push(serviceItem);
                 renderTransaction();
+                e.target.reset(); // Clear the form after adding the item
             }
         } catch (error) {
             console.error("Error calculating price:", error);
-            alert("Could not calculate price. Please ensure prices are set in the admin panel.");
+            alert(`Could not calculate price. Please ensure prices are set in the admin panel.\n\nDetails: ${error.message}`);
         }
     }
 

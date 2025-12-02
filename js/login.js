@@ -2,7 +2,8 @@
 // Do NOT use this in a production environment.
 
 import { db } from './firebase-init.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { hashText } from './utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
