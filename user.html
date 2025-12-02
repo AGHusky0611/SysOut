@@ -87,22 +87,23 @@
                                 <div class="input-group">
                                     <label for="print-paper-size">Paper Size</label>
                                     <select id="print-paper-size">
+
+                                        <option value="letter">Letter</option>
                                         <option value="a4">A4</option>
                                         <option value="legal">Legal</option>
-                                        <option value="letter">Letter</option>
                                     </select>
                                 </div>
                                 <div class="input-group">
                                     <label for="print-type">Print Type</label>
                                     <select id="print-type">
                                         <option value="bw">Black & White</option>
-                                        <option value="color">Color</option>
+                                        <option value="color">Colored</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="print-pages">Number of Pages</label>
-                                <input type="number" id="print-pages" placeholder="e.g., 5" min="1" required>
+                                <div class="input-group full-span">
+                                    <label for="print-pages">Number of Pages</label>
+                                    <input type="number" id="print-pages" min="1" value="1" required>
+                                </div>
                             </div>
                             <button type="submit" class="add-job-btn">Add to Transaction</button>
                         </form>
@@ -113,13 +114,21 @@
                                 <div class="input-group">
                                     <label for="scan-type">Scan Type</label>
                                     <select id="scan-type">
-                                        <option value="scan_only">Scan Only</option>
-                                        <option value="ecopy">With E-Copy</option>
+                                        <option value="only">Scan Only</option>
+                                        <option value="ecopy">Scan + E-Copy</option>
                                     </select>
                                 </div>
                                 <div class="input-group">
+                                    <label for="scan-paper-size">Paper Size</label>
+                                    <select id="scan-paper-size">
+                                        <option value="letter">Letter</option>
+                                        <option value="a4">A4</option>
+                                        <option value="legal">Legal</option>
+                                    </select>
+                                </div>
+                                <div class="input-group full-span">
                                     <label for="scan-pages">Number of Pages</label>
-                                    <input type="number" id="scan-pages" placeholder="e.g., 2" min="1" required>
+                                    <input type="number" id="scan-pages" min="1" value="1" required>
                                 </div>
                             </div>
                             <button type="submit" class="add-job-btn">Add to Transaction</button>
@@ -127,20 +136,17 @@
 
                          <!-- Form for Lamination -->
                         <form id="form-lamination" class="service-form" style="display: none;">
-                             <div class="form-grid">
-                                <div class="input-group">
-                                    <label for="lamination-size">Size</label>
-                                    <select id="lamination-size">
-                                        <option value="small">Small (e.g., ID)</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="long_bond">Long Bond</option>
-                                        <option value="short_bond">Short Bond</option>
-                                    </select>
-                                </div>
-                                <div class="input-group">
-                                    <label for="lamination-qty">Quantity</label>
-                                    <input type="number" id="lamination-qty" placeholder="e.g., 1" min="1" required>
-                                </div>
+                            <div class="input-group">
+                                <label for="lamination-size">Size</label>
+                                <select id="lamination-size">
+                                    <option value="whole_a4">Whole A4</option>
+                                    <option value="half_a4">Half A4</option>
+                                    <option value="quarter_a4">1/4 A4</option>
+                                </select>
+                            </div>
+                             <div class="input-group">
+                                <label for="lamination-qty">Quantity</label>
+                                <input type="number" id="lamination-qty" min="1" value="1" required>
                             </div>
                             <button type="submit" class="add-job-btn">Add to Transaction</button>
                         </form>
@@ -148,24 +154,24 @@
                         <!-- Form for PVC ID -->
                         <form id="form-pvc" class="service-form" style="display: none;">
                             <div class="form-grid">
-                               <div class="input-group">
-                                    <label for="pvc-type">PVC Type</label>
-                                    <select id="pvc-type">
-                                        <option value="front">Front Only</option>
-                                        <option value="back">Back-to-Back</option>
-                                    </select>
-                                </div>
-                                <div class="input-group">
-                                    <label for="pvc-edit">With Editing</label>
-                                    <select id="pvc-edit">
-                                        <option value="no">No</option>
-                                        <option value="yes">Yes</option>
-                                    </select>
-                                </div>
+                                 <div class="input-group">
+                                <label for="pvc-type">Print Type</label>
+                                <select id="pvc-type">
+                                    <option value="front">Front Only</option>
+                                    <option value="back">Back-to-Back</option>
+                                </select>
                             </div>
                             <div class="input-group">
-                                 <label for="pvc-qty">Quantity</label>
-                                 <input type="number" id="pvc-qty" placeholder="e.g., 1" min="1" required>
+                                <label for="pvc-edit">With Edit?</label>
+                                 <select id="pvc-edit">
+                                    <option value="no">No</option>
+                                    <option value="yes">Yes</option>
+                                </select>
+                            </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="pvc-qty">Quantity (Min. 10)</label>
+                                <input type="number" id="pvc-qty" min="1" value="10" required>
                             </div>
                             <button type="submit" class="add-job-btn">Add to Transaction</button>
                         </form>
