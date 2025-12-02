@@ -141,12 +141,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentTransactionItems.forEach((item, index) => {
             const li = document.createElement('li');
-            const description = item.type === 'print' ?
-                `${item.pages} page(s) - ${item.description}` :
-                `${item.description} (₱${item.amount.toFixed(2)})`;
+            // Use a more generic description display
+            const displayDesc = item.type.startsWith('gcash') 
+                ? `${item.description} (₱${item.amount.toFixed(2)})`
+                : item.description;
 
             li.innerHTML = `
-                <span class="item-desc">${description}</span>
+                <span class="item-desc">${displayDesc}</span>
                 <span class="item-price">₱${item.total.toFixed(2)}</span>
                 <button class="item-remove" data-index="${index}">&times;</button>
             `;
@@ -156,7 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateTotals() {
-        const subtotal = currentTransactionItems.reduce((acc, item) => acc + (item.type === 'print' ? item.total : item.amount), 0);
+        // More consistent calculation for all item types
+        const subtotal = currentTransactionItems.reduce((acc, item) => acc + (item.amount || 0), 0);
         const serviceFee = currentTransactionItems.reduce((acc, item) => acc + (item.fee || 0), 0);
         const grandTotal = subtotal + serviceFee;
 
@@ -223,44 +225,68 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             switch (serviceType) {
                 case 'printing':
-                case 'photocopy':
-                    const printPaper = document.getElementById('print-paper-size').value;
+                case 'photocopy': {
+                    const paperSize = document.getElementById('print-paper-size').value;
                     const printType = document.getElementById('print-type').value;
-                    const printPages = parseInt(document.getElementById('print-pages').value);
-                    const priceKey = `${serviceType}_${printType}_${printPaper}`;
-                    const price = servicePrices[priceKey] * printPages;
-                    item = { type: serviceType, description: `${serviceType === 'printing' ? 'Print' : 'Copy'}: ${printPages} page(s) ${printPaper.toUpperCase()} ${printType.toUpperCase()}`, total: price };
+                    const pages = parseInt(document.getElementById('print-pages').value, 10);
+                    if (isNaN(pages) || pages <= 0) return alert("Invalid number of pages.");
+
+                    const priceKey = `${paperSize}_${printType}`;
+                    const pricePerPage = servicePrices.printing[priceKey];
+                    if (typeof pricePerPage === 'undefined') throw new Error(`Price for ${priceKey} not set.`);
+                    
+                    const total = pricePerPage * pages;
+                    const description = `${serviceType === 'photocopy' ? 'Photocopy' : 'Printing'}: ${pages} pg(s) (${paperSize}, ${printType === 'bw' ? 'B&W' : 'Color'})`;
+                    item = { description, total };
                     break;
+                }
                 
-                case 'scan':
+                case 'scan': {
                     const scanType = document.getElementById('scan-type').value;
-                    const scanPaper = document.getElementById('scan-paper-size').value;
-                    const scanPages = parseInt(document.getElementById('scan-pages').value);
-                    const scanPriceKey = `scan_${scanType}_${scanPaper}`;
-                    const scanPrice = servicePrices[scanPriceKey] * scanPages;
-                    item = { type: 'scan', description: `Scan (${scanType}): ${scanPages} page(s) ${scanPaper.toUpperCase()}`, total: scanPrice };
-                    break;
+                    const pages = parseInt(document.getElementById('scan-pages').value, 10);
+                    if (isNaN(pages) || pages <= 0) return alert("Invalid number of pages.");
 
-                case 'lamination':
-                    const laminationSize = document.getElementById('lamination-size').value;
-                    const laminationQty = parseInt(document.getElementById('lamination-qty').value);
-                    const laminationPriceKey = `lamination_${laminationSize}`;
-                    const laminationPrice = servicePrices[laminationPriceKey] * laminationQty;
-                    item = { type: 'lamination', description: `${laminationQty} x Lamination (${laminationSize.replace('_', ' ')})`, total: laminationPrice };
-                    break;
+                    const pricePerPage = servicePrices.scan[scanType];
+                    if (typeof pricePerPage === 'undefined') throw new Error(`Price for scan type ${scanType} not set.`);
 
-                case 'pvc':
+                    const total = pricePerPage * pages;
+                    const description = `Scan: ${pages} pg(s) (${scanType === 'ecopy' ? 'with E-Copy' : 'Scan Only'})`;
+                    item = { description, total };
+                    break;
+                }
+
+                case 'lamination': {
+                    const size = document.getElementById('lamination-size').value;
+                    const qty = parseInt(document.getElementById('lamination-qty').value, 10);
+                    if (isNaN(qty) || qty <= 0) return alert("Invalid quantity.");
+
+                    const pricePerPiece = servicePrices.lamination[size];
+                    if (typeof pricePerPiece === 'undefined') throw new Error(`Price for lamination size ${size} not set.`);
+                    
+                    const total = pricePerPiece * qty;
+                    const description = `Lamination: ${qty} pc(s) (${size.replace('_', ' ')})`;
+                    item = { description, total };
+                    break;
+                }
+
+                case 'pvc': {
                     const pvcType = document.getElementById('pvc-type').value;
-                    const pvcEdit = document.getElementById('pvc-edit').value;
-                    const pvcQty = parseInt(document.getElementById('pvc-qty').value);
-                    if (pvcQty < 10) {
-                        alert("Minimum quantity for PVC ID is 10.");
-                        return;
+                    const withEdit = document.getElementById('pvc-edit').value;
+                    const qty = parseInt(document.getElementById('pvc-qty').value, 10);
+                    if (isNaN(qty) || qty <= 0) return alert("Invalid quantity.");
+
+                    let pricePerPiece = servicePrices.pvc[pvcType];
+                    if (typeof pricePerPiece === 'undefined') throw new Error(`Price for PVC type ${pvcType} not set.`);
+
+                    if (withEdit === 'yes') {
+                        pricePerPiece += (servicePrices.pvc.edit || 0);
                     }
-                    const pvcPriceKey = `pvc_${pvcType}_${pvcEdit === 'yes' ? 'edit' : 'print'}`;
-                    const pvcPrice = servicePrices[pvcPriceKey] * pvcQty;
-                    item = { type: 'pvc', description: `${pvcQty} x PVC ID (${pvcType}, ${pvcEdit === 'yes' ? 'w/ Edit' : 'Print Only'})`, total: pvcPrice };
+
+                    const total = pricePerPiece * qty;
+                    const description = `PVC ID: ${qty} pc(s) (${pvcType === 'back' ? 'Back-to-Back' : 'Front Only'}, Edit: ${withEdit})`;
+                    item = { description, total };
                     break;
+                }
             }
 
             if (item) {
@@ -268,8 +294,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const serviceItem = {
                     type: 'service',
                     description: item.description,
-                    cost: item.total,
-                    total: item.total
+                    amount: item.total, // Base amount
+                    fee: 0,           // Services have no separate fee
+                    total: item.total // Total cost for this item
                 };
                 currentTransactionItems.push(serviceItem);
                 renderTransaction();
