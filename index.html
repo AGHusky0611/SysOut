@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SysOut POS - Login</title>
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-container">
+            <!-- Ensure your logo is named logo.png and is in the same folder -->
+            <img src="./res/logo.jpg" alt="SysOut Printing Logo" class="logo-placeholder">
+        </div>
+        <h1>POS Login</h1>
+        <form id="login-form">
+            <div class="input-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+            <div class="input-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="login-button">Login</button>
+        </form>
+        <div id="login-message" class="error-message" style="color: red; text-align: center; margin-top: 10px;"></div>
+        <!-- <p style="text-align: center; margin-top: 1rem;">
+            No account? <a href="signup.html">Sign up here</a>
+        </p> -->
+    </div>
+
+    <!-- Update your scripts to use type="module" -->
+    <script type="module" src="js/firebase-init.js"></script>
+    <script type="module" src="js/login.js"></script>
+</body>
+</html>

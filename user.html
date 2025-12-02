@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SysOut POS</title>
+    <link rel="stylesheet" href="./css/user.css">
+</head>
+<body>
+    <header class="main-header">
+        <div class="logo">
+            <h1>SysOut POS</h1>
+        </div>
+        <div class="user-info">
+            <span>Welcome, <strong id="username-display">User</strong></span>
+            <button id="logoutBtn">Logout</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Left column for POS controls -->
+        <div class="pos-controls">
+            <!-- GCash POS Card -->
+            <section class="card">
+                <h2>GCash POS</h2>
+                <p>Current Balance: <strong id="current-gcash-balance">Loading...</strong></p>
+                <form id="gcash-form">
+                    <div class="input-group">
+                        <label for="gcash-amount">Amount (₱)</label>
+                        <input type="number" id="gcash-amount" placeholder="e.g., 1000" step="0.01" required>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" id="cash-in-btn" class="g-cash-btn cash-in">Cash In</button>
+                        <button type="button" id="cash-out-btn" class="g-cash-btn cash-out">Cash Out</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Printing POS Card -->
+            <section class="card">
+                <h2>Printing POS</h2>
+                <form id="print-job-form">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="paper-size">Paper Size</label>
+                            <select id="paper-size" required>
+                                <option value="a4">A4</option>
+                                <option value="letter">Letter</option>
+                                <option value="legal">Legal</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="print-type">Print Type</label>
+                            <select id="print-type" required>
+                                <option value="bw">Black & White</option>
+                                <option value="color">Colored</option>
+                            </select>
+                        </div>
+                        <div class="input-group full-span">
+                            <label for="page-count">Number of Pages</label>
+                            <input type="number" id="page-count" min="1" value="1" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="add-job-btn">Add Print Job</button>
+                </form>
+            </section>
+        </div>
+
+        <!-- Right column for the current transaction -->
+        <div class="transaction-summary">
+            <section class="card receipt-card">
+                <h2>Current Transaction</h2>
+                <ul id="transaction-items" class="transaction-list">
+                    <!-- Items will be added here by JS -->
+                    <li class="placeholder">Add items to begin a transaction.</li>
+                </ul>
+                <div class="totals">
+                    <div class="total-row">
+                        <span>Subtotal</span>
+                        <span id="subtotal">₱0.00</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Service Fee</span>
+                        <span id="service-fee">₱0.00</span>
+                    </div>
+                    <div class="total-row grand-total">
+                        <span>Total Amount</span>
+                        <span id="grand-total">₱0.00</span>
+                    </div>
+                </div>
+                <div class="button-group-column">
+                    <button id="complete-payment-btn" class="payment-btn">Complete Payment</button>
+                    <button id="clear-transaction-btn" class="clear-btn">Clear Transaction</button>
+                </div>
+                <p id="transaction-message" class="form-message"></p>
+            </section>
+        </div>
+    </div>
+
+    <script type="module" src="js/firebase-init.js"></script>
+    <script type="module" src="js/user.js"></script>
+</body>
+</html>
