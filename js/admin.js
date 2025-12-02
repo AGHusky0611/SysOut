@@ -201,40 +201,79 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- EXPORT FUNCTION ---
     async function exportTransactionsToExcel() {
         try {
-            const transactionsSnapshot = await getDocs(collection(db, "transactions"));
-            if (transactionsSnapshot.empty) {
-                alert("No transactions to export.");
-                return;
-            }
+            const allLogs = [];
 
-            const data = [];
+            // 1. Fetch and process Transactions
+            const transactionsSnapshot = await getDocs(collection(db, "transactions"));
             transactionsSnapshot.forEach(doc => {
                 const t = doc.data();
-                const timestamp = t.timestamp?.toDate ? t.timestamp.toDate().toLocaleString() : 'N/A';
+                const timestamp = t.timestamp?.toDate ? t.timestamp.toDate() : null;
+                const formattedDate = timestamp ? timestamp.toLocaleString() : 'N/A';
                 
                 t.items.forEach(item => {
-                    data.push({
-                        'Transaction ID': doc.id,
-                        'Date': timestamp,
-                        'Cashier': t.user,
-                        'Item Type': item.type,
-                        'Description': item.description,
-                        'Amount': item.amount || item.cost || 0,
-                        'Service Fee': item.fee || 0,
-                        'Item Total': item.total,
-                        'Transaction Total': t.totalAmount
+                    allLogs.push({
+                        _timestamp: timestamp, // Temporary field for sorting
+                        'Date': formattedDate,
+                        'User': t.user,
+                        'Type of Entry': `Sale (${item.type})`, // e.g., "Sale (Photocopy BW Letter)"
+                        'Description/Reference': item.description,
+                        'Amount Charged/Changed': item.amount || item.cost || 0,
+                        'Service Fee (if applicable)': item.fee || 0,
+                        'Item Total (if applicable)': item.total,
+                        'Transaction Total': t.totalAmount, // This applies to the entire sale transaction
+                        'New GCash Balance': null, // Not applicable for transaction items
+                        'Record ID': doc.id
                     });
                 });
             });
 
-            const worksheet = XLSX.utils.json_to_sheet(data);
+            // 2. Fetch and process GCash Balance Logs
+            const gcashLogsSnapshot = await getDocs(collection(db, "gcash_balance_logs"));
+            gcashLogsSnapshot.forEach(doc => {
+                const log = doc.data();
+                const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : null;
+                const formattedDate = timestamp ? timestamp.toLocaleString() : 'N/A';
+
+                allLogs.push({
+                    _timestamp: timestamp, // Temporary field for sorting
+                    'Date': formattedDate,
+                    'User': log.user, // The admin user who made the balance change
+                    'Type of Entry': log.type === 'top-up' ? 'GCash Top-up' : 'GCash Deduction',
+                    'Description/Reference': log.reference || "N/A",
+                    'Amount Charged/Changed': log.amount, // The amount that was added or deducted
+                    'Service Fee (if applicable)': null, 
+                    'Item Total (if applicable)': null,
+                    'Transaction Total': null,
+                    'New GCash Balance': log.newBalance, // The balance after this specific change
+                    'Record ID': doc.id
+                });
+            });
+
+            if (allLogs.length === 0) {
+                alert("No logs to export.");
+                return;
+            }
+
+            // 3. Sort all logs by timestamp
+            allLogs.sort((a, b) => {
+                // Handle cases where _timestamp might be null for robust sorting
+                if (!a._timestamp && !b._timestamp) return 0;
+                if (!a._timestamp) return 1; // Put records without timestamps at the end
+                if (!b._timestamp) return -1; // Put records without timestamps at the end
+                return a._timestamp.getTime() - b._timestamp.getTime();
+            });
+
+            // Remove the temporary _timestamp field before exporting to Excel
+            const finalData = allLogs.map(({ _timestamp, ...rest }) => rest);
+
+            const worksheet = XLSX.utils.json_to_sheet(finalData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
-            XLSX.writeFile(workbook, `SysOut_Transactions_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "All Logs");
+            XLSX.writeFile(workbook, `SysOut_All_Logs_${new Date().toISOString().slice(0,10)}.xlsx`);
 
         } catch (error) {
             console.error("Error exporting to Excel:", error);
-            alert("Failed to export transactions. See console for details.");
+            alert("Failed to export logs. See console for details.");
         }
     }
 

@@ -38,7 +38,13 @@
                     <div class="setting-card">
                         <h3>GCash Settings</h3>
                         <p>Current Balance: <strong id="current-gcash-balance">Loading...</strong></p>
-                        <!-- MODIFIED FORM -->
+                        
+                        <!-- ADD THIS SUMMARY SECTION -->
+                        <div class="balance-summary" style="margin: 1rem 0; font-size: 0.9rem; color: #555;">
+                            <span>Today's Top-ups: <strong id="total-added-today" style="color: #28a745;">₱0.00</strong></span> | 
+                            <span>Today's Deductions: <strong id="total-deducted-today" style="color: #dc3545;">₱0.00</strong></span>
+                        </div>
+                        
                         <form id="balance-change-form" class="sub-form">
                             <div class="input-group">
                                 <label for="balance-change-amount">Amount (₱)</label>
