@@ -28,9 +28,10 @@ body {
     width: 100%;
     max-width: 400px;
     background-color: var(--form-bg-color);
-    padding: 2.5rem;
+    padding: 40px;
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
 }
 
 .logo-container {
@@ -92,4 +93,24 @@ body {
     .login-container {
         padding: 1.5rem;
     }
+}
+
+/* ADD THESE NEW STYLES FOR THE HEADER */
+.login-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 25px; /* Adds space below the header */
+}
+
+.login-header img {
+    width: 50px; /* Adjust size as needed */
+    height: 50px;
+    margin-right: 15px; /* Space between logo and title */
+}
+
+.login-header h2 {
+    margin: 0; /* Resets default margin */
+    font-size: 2em;
+    color: #333;
 }

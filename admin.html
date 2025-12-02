@@ -38,12 +38,20 @@
                     <div class="setting-card">
                         <h3>GCash Settings</h3>
                         <p>Current Balance: <strong id="current-gcash-balance">Loading...</strong></p>
-                        <form id="gcash-balance-form" class="sub-form">
+                        <!-- MODIFIED FORM -->
+                        <form id="balance-change-form" class="sub-form">
                             <div class="input-group">
-                                <label for="new-balance">Set New Balance (₱)</label>
-                                <input type="number" id="new-balance" name="new-balance" step="0.01" placeholder="e.g., 5000.00" required>
+                                <label for="balance-change-amount">Amount (₱)</label>
+                                <input type="number" id="balance-change-amount" name="balance-change-amount" step="0.01" placeholder="e.g., 500.00" required>
                             </div>
-                            <button type="submit">Update Balance</button>
+                            <div class="input-group">
+                                <label for="balance-change-reference">Reference (Optional)</label>
+                                <input type="text" id="balance-change-reference" placeholder="e.g., Daily cash deposit">
+                            </div>
+                            <div class="button-group" style="display: flex; gap: 10px;">
+                                <button type="button" id="add-balance-btn" style="flex-grow: 1; background-color: #28a745;">Add to Balance</button>
+                                <button type="button" id="deduct-balance-btn" style="flex-grow: 1; background-color: #dc3545;">Deduct from Balance</button>
+                            </div>
                             <p id="gcash-message" class="form-message"></p>
                         </form>
 

@@ -10,7 +10,9 @@ import {
     setDoc, 
     addDoc, 
     deleteDoc, 
-    updateDoc 
+    updateDoc,
+    runTransaction, // Import runTransaction
+    Timestamp       // Import Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { 
     getAuth, 
@@ -55,6 +57,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- SETTINGS FUNCTIONS ---
+
+    // Handles updating the GCash balance and creating a log entry
+    async function updateGcashBalance(changeAmount, reference) {
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        const messageEl = document.getElementById('gcash-message');
+        
+        try {
+            await runTransaction(db, async (transaction) => {
+                const settingsRef = doc(db, "settings", "gcash");
+                const logRef = doc(collection(db, "gcash_balance_logs")); // Create a ref for a new log document
+
+                const settingsSnap = await transaction.get(settingsRef);
+                const currentBalance = settingsSnap.exists() ? settingsSnap.data().balance : 0;
+                const newBalance = currentBalance + changeAmount;
+
+                // 1. Update the balance in the settings document
+                transaction.set(settingsRef, { balance: newBalance }, { merge: true });
+
+                // 2. Create a new log document
+                transaction.set(logRef, {
+                    amount: changeAmount,
+                    newBalance: newBalance,
+                    reference: reference || "N/A",
+                    type: changeAmount > 0 ? 'top-up' : 'deduction',
+                    user: currentUser.username,
+                    timestamp: Timestamp.fromDate(new Date())
+                });
+            });
+
+            messageEl.textContent = "Balance updated successfully!";
+            loadGcashSettings(); // Refresh the displayed balance
+            document.getElementById('balance-change-form').reset();
+
+        } catch (error) {
+            console.error("Transaction failed: ", error);
+            messageEl.textContent = "Failed to update balance. See console for details.";
+        }
+         setTimeout(() => messageEl.textContent = '', 3000);
+    }
+
 
     // Load and display all gcash settings
     async function loadGcashSettings() {
@@ -239,32 +281,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- EVENT LISTENERS FOR SETTINGS ---
 
-    // Handle GCash Balance Update
-    const gcashForm = document.getElementById('gcash-balance-form');
-    if (gcashForm) {
-        gcashForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const messageEl = document.getElementById('gcash-message');
-            const newBalance = parseFloat(document.getElementById('new-balance').value);
+    // Remove the old 'gcash-balance-form' submit listener. It will be replaced below.
 
-            if (isNaN(newBalance) || newBalance < 0) {
-                messageEl.textContent = "Please enter a valid amount.";
-                return;
-            }
+    // Handle Balance Changes (Add/Deduct)
+    const addBalanceBtn = document.getElementById('add-balance-btn');
+    const deductBalanceBtn = document.getElementById('deduct-balance-btn');
 
-            try {
-                // Use setDoc with merge:true to create or update without overwriting other fields
-                await setDoc(doc(db, "settings", "gcash"), { balance: newBalance }, { merge: true });
-                messageEl.textContent = "Balance updated successfully!";
-                loadGcashSettings(); // Refresh display
-                gcashForm.reset();
-            } catch (error) {
-                console.error("Error updating balance:", error);
-                messageEl.textContent = "Failed to update balance.";
-            }
+    const handleBalanceChange = (isTopUp) => {
+        const amountInput = document.getElementById('balance-change-amount');
+        const referenceInput = document.getElementById('balance-change-reference');
+        const messageEl = document.getElementById('gcash-message');
+
+        const amount = parseFloat(amountInput.value);
+        const reference = referenceInput.value.trim();
+
+        if (isNaN(amount) || amount <= 0) {
+            messageEl.textContent = "Please enter a valid positive amount.";
             setTimeout(() => messageEl.textContent = '', 3000);
-        });
+            return;
+        }
+
+        const changeAmount = isTopUp ? amount : -amount;
+        updateGcashBalance(changeAmount, reference);
+    };
+
+    if (addBalanceBtn) {
+        addBalanceBtn.addEventListener('click', () => handleBalanceChange(true));
     }
+    if (deductBalanceBtn) {
+        deductBalanceBtn.addEventListener('click', () => handleBalanceChange(false));
+    }
+
     
     // Handle Printing Balance Update
     const printingBalanceForm = document.getElementById('printing-balance-form');
