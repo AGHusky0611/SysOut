@@ -31,12 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM ELEMENT REFERENCES ---
     const gcashBalanceDisplay = document.getElementById('dashboard-gcash-balance');
     const posGcashBalanceDisplay = document.getElementById('pos-gcash-balance');
-    // ADD THIS
     const dashboardCashOnHandDisplay = document.getElementById('dashboard-cash-on-hand');
     const posCashOnHandDisplay = document.getElementById('pos-cash-on-hand');
 
     const gcashFeeDisplay = document.getElementById('gcash-fee-display');
     const gcashAmountInput = document.getElementById('gcash-amount');
+    // ADD THIS NEW REFERENCE TO THE INPUT FIELD
+    const gcashReferenceInput = document.getElementById('gcash-reference'); 
     const transactionItemsList = document.getElementById('transaction-items');
     const subtotalDisplay = document.getElementById('subtotal');
     const serviceFeeDisplay = document.getElementById('service-fee');
@@ -254,6 +255,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        // GET THE REFERENCE FROM THE NEW INPUT FIELD
+        const reference = gcashReferenceInput.value.trim();
+
         const fee = getGcashFee(amount);
         const description = type === 'in' ? 'GCash Cash In' : 'GCash Cash Out';
         currentTransactionItems.push({
@@ -262,10 +266,12 @@ document.addEventListener('DOMContentLoaded', () => {
             amount: amount,
             fee: fee,
             total: amount + fee, // Total the customer pays (amount + fee)
+            reference: reference || (type === 'in' ? 'Cash In (POS)' : 'Cash Out (POS)') // Add reference to the item
         });
 
         renderTransaction();
         amountInput.value = '';
+        gcashReferenceInput.value = ''; // Clear reference input after adding
     }
 
     function handleAddService(e) {
@@ -416,21 +422,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 let gcashInPrincipal = 0; // Amount customer wants to deposit to their GCash
                 let gcashInTotalPaidByCustomer = 0; // Principal + fee, total cash received from customer for cash in
                 let gcashInFee = 0;
+                let gcashInReferences = []; // Collect references for logging
 
                 let gcashOutPrincipal = 0; // Amount customer wants to withdraw from their GCash
                 let gcashOutTotalChargedToGcash = 0; // Principal + fee, total charged to customer's GCash for cash out
                 let gcashOutFee = 0;
+                let gcashOutReferences = []; // Collect references for logging
                 
+
                 // Calculate separate totals for cash-in and cash-out GCash items
                 currentTransactionItems.forEach(item => {
                     if (item.type === 'gcash_in') {
                         gcashInPrincipal += item.amount;
                         gcashInFee += item.fee;
                         gcashInTotalPaidByCustomer += item.total; // item.amount + item.fee
+                        if (item.reference) gcashInReferences.push(item.reference); // Collect reference
                     } else if (item.type === 'gcash_out') {
                         gcashOutPrincipal += item.amount;
                         gcashOutFee += item.fee;
                         gcashOutTotalChargedToGcash += item.total; // item.amount + item.fee
+                        if (item.reference) gcashOutReferences.push(item.reference); // Collect reference
                     }
                 });
 
@@ -464,7 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         gcashFeeCollected: gcashInFee,
                         newGcashBalance: newGcashBalance, // Snapshot of balance after all changes
                         newCashOnHandBalance: newCashOnHandBalance, // Snapshot of balance after all changes
-                        reference: 'Customer GCash Cash In',
+                        // Use collected references for the log
+                        reference: gcashInReferences.length > 0 ? gcashInReferences.join('; ') : 'Customer GCash Cash In (POS)',
                         user: currentUser.username,
                         timestamp: Timestamp.fromDate(new Date())
                     });
@@ -479,7 +491,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         gcashFeeCollected: gcashOutFee,
                         newGcashBalance: newGcashBalance, // Snapshot of balance after all changes
                         newCashOnHandBalance: newCashOnHandBalance, // Snapshot of balance after all changes
-                        reference: 'Customer GCash Cash Out',
+                        // Use collected references for the log
+                        reference: gcashOutReferences.length > 0 ? gcashOutReferences.join('; ') : 'Customer GCash Cash Out (POS)',
                         user: currentUser.username,
                         timestamp: Timestamp.fromDate(new Date())
                     });

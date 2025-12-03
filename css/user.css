@@ -59,7 +59,9 @@ body {
     font-weight: 500;
 }
 
-input[type="number"], select {
+input[type="number"], 
+input[type="text"], /* ADDED THIS LINE */
+select {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid var(--border-color);
@@ -90,8 +92,25 @@ button {
     width: 100%;
 }
 
+.button-group button, .gcash-button-group button { /* Apply to all buttons in these groups */
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+    flex-grow: 1; /* Make buttons fill available space */
+}
+
+.gcash-button-group {
+    display: flex;
+    gap: 10px; /* Space between buttons */
+    margin-top: 15px; /* Add some space above the buttons */
+    margin-bottom: 10px; /* Add some space below the buttons, before messages */
+}
+
 .g-cash-btn.cash-in { background-color: var(--primary-color); color: white; }
-.g-cash-btn.cash-out { background-color: #ffc107; color: #333; }
+.g-cash-btn.cash-out { background-color: var(--danger-color); color: white; }
 .add-job-btn { background-color: #17a2b8; color: white; }
 .payment-btn { background-color: var(--success-color); color: white; padding: 1rem; font-size: 1.2rem; }
 .clear-btn { background: none; border: 1px solid var(--danger-color); color: var(--danger-color); }
