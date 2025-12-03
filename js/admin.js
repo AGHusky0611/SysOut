@@ -97,6 +97,49 @@ document.addEventListener('DOMContentLoaded', () => {
          setTimeout(() => messageEl.textContent = '', 3000);
     }
 
+    // ADD THIS NEW FUNCTION FOR CASH ON HAND MANAGEMENT
+    async function updateCashOnHand(changeAmount, reference) {
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        const messageEl = document.getElementById('cash-on-hand-message'); // New message element for cash on hand
+
+        try {
+            await runTransaction(db, async (transaction) => {
+                const cashOnHandRef = doc(db, "settings", "cashOnHand");
+                const logRef = doc(collection(db, "cash_on_hand_logs")); // New collection for cash on hand logs
+
+                const cashOnHandSnap = await transaction.get(cashOnHandRef);
+                const currentBalance = cashOnHandSnap.exists() ? cashOnHandSnap.data().balance : 0;
+                const newBalance = currentBalance + changeAmount;
+
+                if (newBalance < 0) {
+                    throw "Insufficient Cash on Hand for this deduction.";
+                }
+
+                // 1. Update the balance in the settings document
+                transaction.set(cashOnHandRef, { balance: newBalance }, { merge: true });
+
+                // 2. Create a new log document for Cash on Hand changes
+                transaction.set(logRef, {
+                    amount: changeAmount,
+                    newBalance: newBalance,
+                    reference: reference || "Admin Adjustment",
+                    type: changeAmount > 0 ? 'add-cash' : 'deduct-cash',
+                    user: currentUser.username,
+                    timestamp: Timestamp.fromDate(new Date())
+                });
+            });
+
+            messageEl.textContent = "Cash on Hand updated successfully!";
+            loadCashOnHandSettings(); // Refresh the displayed balance
+            document.getElementById('cash-on-hand-change-form').reset();
+
+        } catch (error) {
+            console.error("Cash on Hand Transaction failed: ", error);
+            messageEl.textContent = `Failed to update Cash on Hand: ${error}`;
+        }
+        setTimeout(() => messageEl.textContent = '', 3000);
+    }
+
 
     // Load and display all gcash settings
     async function loadGcashSettings() {
@@ -121,6 +164,32 @@ document.addEventListener('DOMContentLoaded', () => {
             balanceDisplay.textContent = "Error";
         }
     }
+
+    // ADD THIS NEW FUNCTION FOR LOADING CASH ON HAND SETTINGS
+    async function loadCashOnHandSettings() {
+        const balanceDisplay = document.getElementById('current-cash-on-hand');
+        try {
+            const settingsRef = doc(db, "settings", "cashOnHand");
+            const settingsSnap = await getDoc(settingsRef);
+            if (settingsSnap.exists()) {
+                const settings = settingsSnap.data();
+                const balance = parseFloat(settings.balance);
+                if (!isNaN(balance)) {
+                    balanceDisplay.textContent = `₱${balance.toFixed(2)}`;
+                } else {
+                    balanceDisplay.textContent = "Invalid Data";
+                }
+            } else {
+                balanceDisplay.textContent = "₱0.00";
+                // Optionally, initialize if it doesn't exist
+                await setDoc(settingsRef, { balance: 0.00 }, { merge: true });
+            }
+        } catch (error) {
+            console.error("Error loading Cash on Hand settings:", error);
+            balanceDisplay.textContent = "Error";
+        }
+    }
+
 
     async function loadPrintingSettings() {
         const balanceDisplay = document.getElementById('current-printing-balance');
@@ -222,6 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Item Total (if applicable)': item.total,
                         'Transaction Total': t.totalAmount, // This applies to the entire sale transaction
                         'New GCash Balance': null, // Not applicable for transaction items
+                        'New Cash on Hand Balance': null, // Not applicable for transaction items
                         'Record ID': doc.id
                     });
                 });
@@ -238,23 +308,54 @@ document.addEventListener('DOMContentLoaded', () => {
                     _timestamp: timestamp, // Temporary field for sorting
                     'Date': formattedDate,
                     'User': log.user, // The admin user who made the balance change
-                    'Type of Entry': log.type === 'top-up' ? 'GCash Top-up' : 'GCash Deduction',
+                    'Type of Entry': log.type === 'top-up' ? 'GCash Top-up (Admin)' : 'GCash Deduction (Admin)',
                     'Description/Reference': log.reference || "N/A",
                     'Amount Charged/Changed': log.amount, // The amount that was added or deducted
                     'Service Fee (if applicable)': null, 
                     'Item Total (if applicable)': null,
                     'Transaction Total': null,
                     'New GCash Balance': log.newBalance, // The balance after this specific change
+                    'New Cash on Hand Balance': null, // Not applicable for gcash balance logs
                     'Record ID': doc.id
                 });
             });
+
+            // ADD THIS: 3. Fetch and process Cash on Hand Logs
+            const cashOnHandLogsSnapshot = await getDocs(collection(db, "cash_on_hand_logs"));
+            cashOnHandLogsSnapshot.forEach(doc => {
+                const log = doc.data();
+                const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : null;
+                const formattedDate = timestamp ? timestamp.toLocaleString() : 'N/A';
+
+                let entryType = '';
+                if (log.type === 'add-cash') entryType = 'Cash on Hand Add (Admin)';
+                else if (log.type === 'deduct-cash') entryType = 'Cash on Hand Deduct (Admin)';
+                else if (log.type === 'cash-in-to-gcash') entryType = 'GCash Cash-In (POS)'; // Customer gave cash, you updated CoH
+                else if (log.type === 'cash-out-from-gcash') entryType = 'GCash Cash-Out (POS)'; // You gave cash, you updated CoH
+
+                allLogs.push({
+                    _timestamp: timestamp, // Temporary field for sorting
+                    'Date': formattedDate,
+                    'User': log.user,
+                    'Type of Entry': entryType,
+                    'Description/Reference': log.reference || "N/A",
+                    'Amount Charged/Changed': log.amount, // The amount that was added/deducted from cash on hand
+                    'Service Fee (if applicable)': log.gcashTransactionFee || 0, // Relevant for POS GCash transactions
+                    'Item Total (if applicable)': null,
+                    'Transaction Total': null,
+                    'New GCash Balance': log.newGcashBalance || null, // Relevant for POS GCash transactions
+                    'New Cash on Hand Balance': log.newCashOnHandBalance, // The balance after this specific change
+                    'Record ID': doc.id
+                });
+            });
+
 
             if (allLogs.length === 0) {
                 alert("No logs to export.");
                 return;
             }
 
-            // 3. Sort all logs by timestamp
+            // 4. Sort all logs by timestamp (changed from 3 to 4)
             allLogs.sort((a, b) => {
                 // Handle cases where _timestamp might be null for robust sorting
                 if (!a._timestamp && !b._timestamp) return 0;
@@ -283,6 +384,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadGcashSettings();
     loadPrintingSettings();
     loadServicePrices();
+    // ADD THIS
+    loadCashOnHandSettings();
 
     // Logout
     const logoutBtn = document.getElementById('logoutBtn');
@@ -326,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addBalanceBtn = document.getElementById('add-balance-btn');
     const deductBalanceBtn = document.getElementById('deduct-balance-btn');
 
-    const handleBalanceChange = (isTopUp) => {
+    const handleGcashBalanceChange = (isTopUp) => { // Renamed from handleBalanceChange to specify GCash
         const amountInput = document.getElementById('balance-change-amount');
         const referenceInput = document.getElementById('balance-change-reference');
         const messageEl = document.getElementById('gcash-message');
@@ -345,10 +448,39 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     if (addBalanceBtn) {
-        addBalanceBtn.addEventListener('click', () => handleBalanceChange(true));
+        addBalanceBtn.addEventListener('click', () => handleGcashBalanceChange(true));
     }
     if (deductBalanceBtn) {
-        deductBalanceBtn.addEventListener('click', () => handleBalanceChange(false));
+        deductBalanceBtn.addEventListener('click', () => handleGcashBalanceChange(false));
+    }
+
+    // ADD THIS: Handle Cash on Hand Changes (Add/Deduct)
+    const addCashOnHandBtn = document.getElementById('add-cash-on-hand-btn');
+    const deductCashOnHandBtn = document.getElementById('deduct-cash-on-hand-btn');
+
+    const handleCashOnHandChange = (isAdd) => {
+        const amountInput = document.getElementById('cash-on-hand-change-amount');
+        const referenceInput = document.getElementById('cash-on-hand-change-reference');
+        const messageEl = document.getElementById('cash-on-hand-message');
+
+        const amount = parseFloat(amountInput.value);
+        const reference = referenceInput.value.trim();
+
+        if (isNaN(amount) || amount <= 0) {
+            messageEl.textContent = "Please enter a valid positive amount.";
+            setTimeout(() => messageEl.textContent = '', 3000);
+            return;
+        }
+
+        const changeAmount = isAdd ? amount : -amount;
+        updateCashOnHand(changeAmount, reference);
+    };
+
+    if (addCashOnHandBtn) {
+        addCashOnHandBtn.addEventListener('click', () => handleCashOnHandChange(true));
+    }
+    if (deductCashOnHandBtn) {
+        deductCashOnHandBtn.addEventListener('click', () => handleCashOnHandChange(false));
     }
 
     

@@ -25,6 +25,12 @@
                 <p id="dashboard-gcash-balance">Loading...</p>
                 <span>The current total balance in the GCash account.</span>
             </div>
+            <!-- ADD THIS NEW CARD FOR CASH ON HAND -->
+            <div class="summary-card">
+                <h3>Cash on Hand</h3>
+                <p id="dashboard-cash-on-hand">Loading...</p>
+                <span>The current physical cash available in the register.</span>
+            </div>
             <div class="summary-card">
                 <h3>Today's Service Sales</h3>
                 <p id="today-service-sales">₱0.00</p>
@@ -53,7 +59,9 @@
                     <!-- GCash POS Card -->
                     <section class="card">
                         <h2>GCash POS</h2>
-                        <p>Current Balance: <strong id="pos-gcash-balance">Loading...</strong></p>
+                        <p>Current GCash Balance: <strong id="pos-gcash-balance">Loading...</strong></p>
+                        <!-- ADD THIS FOR CASH ON HAND IN POS -->
+                        <p>Current Cash on Hand: <strong id="pos-cash-on-hand">Loading...</strong></p>
                         <form id="gcash-form">
                             <div class="input-group">
                                 <label for="gcash-amount">Amount (₱)</label>

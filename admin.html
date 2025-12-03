@@ -135,6 +135,28 @@
                             <p id="pricing-message" class="form-message"></p>
                         </form>
                     </div>
+
+                    <!-- ADD THIS NEW CARD FOR CASH ON HAND SETTINGS -->
+                    <div class="setting-card">
+                        <h3>Cash on Hand Settings</h3>
+                        <p>Current Cash on Hand: <strong id="current-cash-on-hand">Loading...</strong></p>
+                        <form id="cash-on-hand-change-form" class="sub-form">
+                            <div class="input-group">
+                                <label for="cash-on-hand-change-amount">Amount (₱)</label>
+                                <input type="number" id="cash-on-hand-change-amount" name="cash-on-hand-change-amount" step="0.01" placeholder="e.g., 1000.00" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="cash-on-hand-change-reference">Reference (Optional)</label>
+                                <input type="text" id="cash-on-hand-change-reference" placeholder="e.g., Initial setup, daily deposit">
+                            </div>
+                            <div class="button-group" style="display: flex; gap: 10px;">
+                                <button type="button" id="add-cash-on-hand-btn" style="flex-grow: 1; background-color: #28a745;">Add Cash</button>
+                                <button type="button" id="deduct-cash-on-hand-btn" style="flex-grow: 1; background-color: #dc3545;">Deduct Cash</button>
+                            </div>
+                            <p id="cash-on-hand-message" class="form-message"></p>
+                        </form>
+                    </div>
+
                 </div>
             </section>
 

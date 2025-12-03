@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM ELEMENT REFERENCES ---
     const gcashBalanceDisplay = document.getElementById('dashboard-gcash-balance');
     const posGcashBalanceDisplay = document.getElementById('pos-gcash-balance');
+    // ADD THIS
+    const dashboardCashOnHandDisplay = document.getElementById('dashboard-cash-on-hand');
+    const posCashOnHandDisplay = document.getElementById('pos-cash-on-hand');
+
     const gcashFeeDisplay = document.getElementById('gcash-fee-display');
     const gcashAmountInput = document.getElementById('gcash-amount');
     const transactionItemsList = document.getElementById('transaction-items');
@@ -95,6 +99,33 @@ document.addEventListener('DOMContentLoaded', () => {
             gcashBalanceDisplay.textContent = "Error";
             posGcashBalanceDisplay.textContent = "Error";
         }
+
+        // ADD THIS: Fetch and display current Cash on Hand Balance
+        try {
+            const cashOnHandRef = doc(db, "settings", "cashOnHand");
+            const cashOnHandSnap = await getDoc(cashOnHandRef);
+            if (cashOnHandSnap.exists()) {
+                const cashOnHandSettings = cashOnHandSnap.data();
+                const balance = parseFloat(cashOnHandSettings.balance);
+                if (!isNaN(balance)) {
+                    const formattedBalance = `₱${balance.toFixed(2)}`;
+                    dashboardCashOnHandDisplay.textContent = formattedBalance;
+                    posCashOnHandDisplay.textContent = formattedBalance;
+                } else {
+                    dashboardCashOnHandDisplay.textContent = "Invalid Data";
+                    posCashOnHandDisplay.textContent = "Invalid Data";
+                }
+            } else {
+                dashboardCashOnHandDisplay.textContent = "Not Set";
+                posCashOnHandDisplay.textContent = "Not Set";
+                console.warn("Cash on Hand settings document does not exist.");
+            }
+        } catch (error) {
+            console.error("Error loading Cash on Hand balance:", error);
+            dashboardCashOnHandDisplay.textContent = "Error";
+            posCashOnHandDisplay.textContent = "Error";
+        }
+
 
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
@@ -230,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
             description: description,
             amount: amount,
             fee: fee,
-            total: amount + fee,
+            total: amount + fee, // Total the customer pays (amount + fee)
         });
 
         renderTransaction();
@@ -365,30 +396,94 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const gcashRef = doc(db, "settings", "gcash");
             const printingRef = doc(db, "settings", "printing");
+            const cashOnHandRef = doc(db, "settings", "cashOnHand");
 
             await runTransaction(db, async (transaction) => {
                 const gcashDoc = await transaction.get(gcashRef);
                 const printingDoc = await transaction.get(printingRef);
+                const cashOnHandDoc = await transaction.get(cashOnHandRef);
 
                 if (!gcashDoc.exists()) {
                     throw "GCash settings document does not exist!";
                 }
+                if (!cashOnHandDoc.exists()) {
+                    throw "Cash on Hand settings document does not exist! Please set an initial balance in the Admin panel.";
+                }
 
-                // 1. Calculate and update GCash balance
                 let newGcashBalance = gcashDoc.data().balance;
-                const gcashIn = currentTransactionItems.filter(i => i.type === 'gcash_in').reduce((sum, i) => sum + i.amount, 0);
-                const gcashOut = currentTransactionItems.filter(i => i.type === 'gcash_out').reduce((sum, i) => sum + i.amount, 0);
+                let newCashOnHandBalance = cashOnHandDoc.data().balance;
+
+                let gcashInPrincipal = 0; // Amount customer wants to deposit to their GCash
+                let gcashInTotalPaidByCustomer = 0; // Principal + fee, total cash received from customer for cash in
+                let gcashInFee = 0;
+
+                let gcashOutPrincipal = 0; // Amount customer wants to withdraw from their GCash
+                let gcashOutTotalChargedToGcash = 0; // Principal + fee, total charged to customer's GCash for cash out
+                let gcashOutFee = 0;
                 
-                // Corrected GCash balance logic:
-                // - Cash In (for the customer) DECREASES your GCash balance.
-                // - Cash Out (for the customer) INCREASES your GCash balance.
-                // - Fees are your profit and do not affect the GCash balance transfer amount.
-                newGcashBalance = newGcashBalance - gcashIn + gcashOut;
-                
+                // Calculate separate totals for cash-in and cash-out GCash items
+                currentTransactionItems.forEach(item => {
+                    if (item.type === 'gcash_in') {
+                        gcashInPrincipal += item.amount;
+                        gcashInFee += item.fee;
+                        gcashInTotalPaidByCustomer += item.total; // item.amount + item.fee
+                    } else if (item.type === 'gcash_out') {
+                        gcashOutPrincipal += item.amount;
+                        gcashOutFee += item.fee;
+                        gcashOutTotalChargedToGcash += item.total; // item.amount + item.fee
+                    }
+                });
+
+                // My Digital GCash Balance Logic:
+                // - Cash In: DECREASES by the principal amount (what goes into customer's GCash)
+                // - Cash Out: INCREASES by the total amount charged to customer's GCash (principal + fee, this comes into my GCash)
+                newGcashBalance = newGcashBalance - gcashInPrincipal + gcashOutTotalChargedToGcash;
+
+                // My Physical Cash on Hand Logic:
+                // - Cash In: INCREASES by the total cash I receive from the customer (principal + fee)
+                // - Cash Out: DECREASES by the principal amount of cash I give to the customer
+                newCashOnHandBalance = newCashOnHandBalance + gcashInTotalPaidByCustomer - gcashOutPrincipal;
+
                 if (newGcashBalance < 0) {
                     throw "Insufficient GCash balance for this transaction.";
                 }
+                if (newCashOnHandBalance < 0) {
+                    throw "Insufficient Cash on Hand for this transaction.";
+                }
+
                 transaction.update(gcashRef, { balance: newGcashBalance });
+                transaction.update(cashOnHandRef, { balance: newCashOnHandBalance });
+
+                // Logging for GCash Cash In/Out changes affecting Cash on Hand
+                if (gcashInPrincipal > 0) {
+                    const cashLogRef = doc(collection(db, "cash_on_hand_logs"));
+                    transaction.set(cashLogRef, {
+                        type: 'pos-gcash-cash-in',
+                        cashImpact: gcashInTotalPaidByCustomer, // Total cash received
+                        gcashPrincipalImpact: -gcashInPrincipal, // Principal removed from my digital GCash
+                        gcashFeeCollected: gcashInFee,
+                        newGcashBalance: newGcashBalance, // Snapshot of balance after all changes
+                        newCashOnHandBalance: newCashOnHandBalance, // Snapshot of balance after all changes
+                        reference: 'Customer GCash Cash In',
+                        user: currentUser.username,
+                        timestamp: Timestamp.fromDate(new Date())
+                    });
+                }
+
+                if (gcashOutPrincipal > 0) {
+                    const cashLogRef = doc(collection(db, "cash_on_hand_logs"));
+                    transaction.set(cashLogRef, {
+                        type: 'pos-gcash-cash-out',
+                        cashImpact: -gcashOutPrincipal, // Cash given out (negative value)
+                        gcashPrincipalImpact: gcashOutTotalChargedToGcash, // Total charged to customer's GCash added to my digital GCash
+                        gcashFeeCollected: gcashOutFee,
+                        newGcashBalance: newGcashBalance, // Snapshot of balance after all changes
+                        newCashOnHandBalance: newCashOnHandBalance, // Snapshot of balance after all changes
+                        reference: 'Customer GCash Cash Out',
+                        user: currentUser.username,
+                        timestamp: Timestamp.fromDate(new Date())
+                    });
+                }
 
                 // 2. Calculate and update Printing balance
                 const serviceTotal = currentTransactionItems
@@ -401,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     transaction.set(printingRef, { balance: newPrintingBalance }, { merge: true });
                 }
 
-                // 3. Log the entire transaction
+                // 4. Log the entire transaction
                 const transLogRef = collection(db, "transactions");
                 await addDoc(transLogRef, {
                     user: currentUser.username,
@@ -417,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentTransactionItems = [];
             renderTransaction();
             // The functions below will now properly refresh all displays
-            loadDashboardData();
+            loadDashboardData(); // This will reload both GCash and Cash on Hand balances
         } catch (e) {
             console.error("Transaction failed: ", e);
             transactionMessage.textContent = `Transaction failed: ${e}`;
@@ -432,12 +527,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const serviceSales = todayServiceSalesEl.textContent;
         const gcashFees = todayGcashFeesEl.textContent;
         const transCount = todayTransactionCountEl.textContent;
+        // ADD THIS
+        const cashOnHand = dashboardCashOnHandDisplay.textContent;
+
 
         alert(
             `--- End of Shift Summary ---\n\n` +
             `Total Transactions: ${transCount}\n` +
             `Total Service Sales: ${serviceSales}\n` +
-            `Total GCash Fees: ${gcashFees}\n\n` +
+            `Total GCash Fees: ${gcashFees}\n` +
+            `Current Cash on Hand: ${cashOnHand}\n\n` + // ADD THIS
             `Report generated for user: ${currentUser.username}`
         );
 
