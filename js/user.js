@@ -446,16 +446,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 // My Digital GCash Balance Logic:
-                // - Cash In: DECREASES by the principal amount (what goes into customer's GCash)
-                // - Cash Out: DECREASES by the principal amount charged to customer's GCash (what goes out to customer bank)
-                newGcashBalance = newGcashBalance - gcashInPrincipal - gcashOutPrincipal;
+                // - Cash In: DECREASES by the principal amount (money sent from my GCash to customer's).
+                // - Cash Out: INCREASES by the total amount charged to the customer's GCash (money sent from customer's GCash to mine).
+                newGcashBalance = newGcashBalance - gcashInPrincipal + gcashOutTotalChargedToGcash;
 
-                // My Physical Cash on Hand Logic:
-                // - Cash In: INCREASES by the total cash I receive from the customer (principal + fee)
-                // - Cash Out: INCREASES by the fee amount (this comes into my cash on hand) and DECREASES by the principal amount of cash I give to the customer
-                newCashOnHandBalance = newCashOnHandBalance + gcashInTotalPaidByCustomer + gcashOutFee - gcashOutPrincipal;
+
+                // Corrected Physical Cash on Hand Logic:
+                // - Cash In: INCREASES by the total cash I receive from the customer (principal + fee).
+                // - Cash Out: DECREASES by the principal amount of cash I give to the customer.
+                newCashOnHandBalance = newCashOnHandBalance + gcashInTotalPaidByCustomer - gcashOutPrincipal;
 
                 if (newGcashBalance < 0) {
+                    // Note: This check might be less relevant for cash-out now, but good to keep.
                     throw "Insufficient GCash balance for this transaction.";
                 }
                 if (newCashOnHandBalance < 0) {
