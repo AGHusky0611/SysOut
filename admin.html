@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="./css/style.css">
     <!-- Admin-specific styles will be heavily modified -->
     <link rel="stylesheet" href="./css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <aside class="sidebar" id="sidebar">
@@ -18,7 +19,8 @@
         <nav class="sidebar-nav">
             <a href="#settings-section">Settings</a>
             <a href="#users-section">Users</a>
-            <a href="#reports-section">Reports</a>
+            <a href="#sales-reports-section">Sales Reports</a>
+            <a href="#export-section">Export & Logs</a>
             <a href="#" id="logoutBtn" class="logout-link">Logout</a>
         </nav>
     </aside>
@@ -206,8 +208,44 @@
                 </div>
             </section>
 
-            <!-- Reports Section -->
-            <section id="reports-section" class="card">
+            <!-- Sales Reports Section -->
+            <section id="sales-reports-section" class="card">
+                <h2>Sales Reports & Trends</h2>
+                
+                <div class="reports-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 2rem;">
+                    <div class="setting-card">
+                        <h3>Daily Sales Difference</h3>
+                        <p id="daily-sales-summary">Today's Total: Loading...</p>
+                        <div class="chart-container" style="position: relative; height:250px;">
+                            <canvas id="dailySalesChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="setting-card">
+                        <h3>Weekly Sales Difference</h3>
+                        <p id="weekly-sales-summary">This Week's Total: Loading...</p>
+                        <div class="chart-container" style="position: relative; height:250px;">
+                            <canvas id="weeklySalesChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="setting-card">
+                        <h3>Monthly Sales Difference</h3>
+                        <p id="monthly-sales-summary">This Month's Total: Loading...</p>
+                         <div class="chart-container" style="position: relative; height:250px;">
+                            <canvas id="monthlySalesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <h3>Overall Sales Trend (Last 7 Days)</h3>
+                    <div class="chart-container-large" style="position: relative; height:350px;">
+                         <canvas id="salesTrendChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reports Section is now Export Section -->
+            <section id="export-section" class="card">
                 <h2>Reports & Logs</h2>
                 <div class="reports-container">
                     <div class="report-placeholder">

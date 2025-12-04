@@ -12,7 +12,9 @@ import {
     deleteDoc, 
     updateDoc,
     runTransaction, // Import runTransaction
-    Timestamp       // Import Timestamp
+    Timestamp,       // Import Timestamp
+    query,
+    where
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { 
     getAuth, 
@@ -54,6 +56,159 @@ document.addEventListener('DOMContentLoaded', () => {
         if (amount <= 10000) return 200;
         if (amount <= 11000) return 220;
         return 220; // Default for amounts over 11,000
+    }
+
+    const formatCurrency = (amount) => `₱${parseFloat(amount).toFixed(2)}`;
+
+    // --- SALES REPORTING & CHARTING ---
+    let charts = {}; // To hold chart instances for destruction
+
+    // Date Helpers
+    const getStartOfDay = (date) => new Date(date.setHours(0, 0, 0, 0));
+    const getEndOfDay = (date) => new Date(date.setHours(23, 59, 59, 999));
+    const getStartOfWeek = (date) => {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day; 
+        return getStartOfDay(new Date(d.setDate(diff)));
+    };
+    const getEndOfWeek = (date) => {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + 6;
+        return getEndOfDay(new Date(d.setDate(diff)));
+    };
+    const getStartOfMonth = (date) => getStartOfDay(new Date(date.getFullYear(), date.getMonth(), 1));
+    const getEndOfMonth = (date) => getEndOfDay(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+
+    // Core sales calculation from transactions
+    async function calculateSales(startDate, endDate) {
+        const transactionsRef = collection(db, "transactions");
+        const q = query(
+            transactionsRef,
+            where("timestamp", ">=", Timestamp.fromDate(startDate)),
+            where("timestamp", "<=", Timestamp.fromDate(endDate))
+        );
+        const querySnapshot = await getDocs(q);
+        let totalSales = 0;
+        querySnapshot.forEach(doc => {
+            totalSales += doc.data().totalAmount || 0;
+        });
+        return { totalSales };
+    }
+    
+    // Generic Chart Renderer
+    function renderChart(canvasId, type, labels, data, label) {
+        if (charts[canvasId]) {
+            charts[canvasId].destroy();
+        }
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        charts[canvasId] = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    // Data Fetchers for Charts
+    async function fetchDailySalesDifferenceData() {
+        const labels = [];
+        const data = [];
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const sales = await calculateSales(getStartOfDay(date), getEndOfDay(date));
+            labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+            data.push(sales.totalSales);
+        }
+        return { labels, data };
+    }
+
+    async function fetchWeeklySalesDifferenceData() {
+        const labels = [];
+        const data = [];
+        for (let i = 3; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - (i * 7));
+            const start = getStartOfWeek(date);
+            const sales = await calculateSales(start, getEndOfWeek(date));
+            labels.push(`Week of ${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`);
+            data.push(sales.totalSales);
+        }
+        return { labels, data };
+    }
+    
+    async function fetchMonthlySalesDifferenceData() {
+        const labels = [];
+        const data = [];
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i, 1); // Set to the 1st to avoid day overflow
+            const sales = await calculateSales(getStartOfMonth(date), getEndOfMonth(date));
+            labels.push(date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+            data.push(sales.totalSales);
+        }
+        return { labels, data };
+    }
+
+    // Report Loaders
+    async function loadDailySales() {
+        const summaryEl = document.getElementById('daily-sales-summary');
+        try {
+            const sales = await calculateSales(getStartOfDay(new Date()), getEndOfDay(new Date()));
+            summaryEl.textContent = `Today's Total: ${formatCurrency(sales.totalSales)}`;
+            const chartData = await fetchDailySalesDifferenceData();
+            renderChart('dailySalesChart', 'bar', chartData.labels, chartData.data, 'Daily Sales');
+        } catch(e) {
+            summaryEl.textContent = "Error loading daily sales.";
+        }
+    }
+
+    async function loadWeeklySales() {
+        const summaryEl = document.getElementById('weekly-sales-summary');
+        try {
+            const sales = await calculateSales(getStartOfWeek(new Date()), getEndOfWeek(new Date()));
+            summaryEl.textContent = `This Week's Total: ${formatCurrency(sales.totalSales)}`;
+            const chartData = await fetchWeeklySalesDifferenceData();
+            renderChart('weeklySalesChart', 'bar', chartData.labels, chartData.data, 'Weekly Sales');
+        } catch(e) {
+            summaryEl.textContent = "Error loading weekly sales.";
+        }
+    }
+
+    async function loadMonthlySales() {
+        const summaryEl = document.getElementById('monthly-sales-summary');
+        try {
+            const sales = await calculateSales(getStartOfMonth(new Date()), getEndOfMonth(new Date()));
+            summaryEl.textContent = `This Month's Total: ${formatCurrency(sales.totalSales)}`;
+            const chartData = await fetchMonthlySalesDifferenceData();
+            renderChart('monthlySalesChart', 'bar', chartData.labels, chartData.data, 'Monthly Sales');
+        } catch(e) {
+            summaryEl.textContent = "Error loading monthly sales.";
+        }
+    }
+
+    async function renderSalesTrendChart() {
+         try {
+            const chartData = await fetchDailySalesDifferenceData();
+            renderChart('salesTrendChart', 'line', chartData.labels, chartData.data, 'Sales Last 7 Days');
+        } catch(e) {
+            console.error("Error rendering trend chart", e);
+        }
     }
 
     // --- SETTINGS FUNCTIONS ---
@@ -386,6 +541,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadServicePrices();
     // ADD THIS
     loadCashOnHandSettings();
+    loadDailySales();
+    loadWeeklySales();
+    loadMonthlySales();
+    renderSalesTrendChart();
 
     // Logout
     const logoutBtn = document.getElementById('logoutBtn');
