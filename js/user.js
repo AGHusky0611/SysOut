@@ -453,8 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Corrected Physical Cash on Hand Logic:
                 // - Cash In: INCREASES by the total cash I receive from the customer (principal + fee).
-                // - Cash Out: DECREASES by the principal amount of cash I give to the customer.
-                newCashOnHandBalance = newCashOnHandBalance + gcashInTotalPaidByCustomer - gcashOutPrincipal;
+                // - Cash Out: DECREASES by the principal amount of cash I give to the customer, and INCREASES by the fee earned.
+                newCashOnHandBalance = newCashOnHandBalance + gcashInTotalPaidByCustomer - gcashOutPrincipal + gcashOutFee;
 
                 if (newGcashBalance < 0) {
                     // Note: This check might be less relevant for cash-out now, but good to keep.
