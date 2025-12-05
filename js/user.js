@@ -448,12 +448,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // My Digital GCash Balance Logic:
                 // - Cash In: DECREASES by the principal amount (money sent from my GCash to customer's).
                 // - Cash Out: INCREASES by the total amount charged to the customer's GCash (money sent from customer's GCash to mine).
-                newGcashBalance = newGcashBalance - gcashInPrincipal + gcashOutTotalChargedToGcash;
+                newGcashBalance = newGcashBalance - gcashInPrincipal + gcashOutPrincipal;
 
 
-                // Corrected Physical Cash on Hand Logic:
-                // - Cash In: INCREASES by the total cash I receive from the customer (principal + fee).
-                // - Cash Out: DECREASES by the principal amount of cash I give to the customer, and INCREASES by the fee earned.
+                // NEW Physical Cash on Hand Logic (Fees for BOTH are handled in cash):
+                // - Cash In: INCREASES by the total cash received from customer (principal + fee).
+                // - Cash Out: DECREASES by the principal given to the customer, but INCREASES by the cash fee received from the customer.
                 newCashOnHandBalance = newCashOnHandBalance + gcashInTotalPaidByCustomer - gcashOutPrincipal + gcashOutFee;
 
                 if (newGcashBalance < 0) {
