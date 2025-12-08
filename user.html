@@ -66,11 +66,24 @@
                                 <label for="gcash-amount">Amount (₱)</label>
                                 <input type="number" id="gcash-amount" name="gcash-amount" step="0.01" placeholder="e.g., 100.00" required>
                             </div>
-                            <!-- ADD THIS NEW INPUT FIELD -->
                             <div class="input-group">
                                 <label for="gcash-reference">Reference Number/Notes (Optional)</label>
                                 <input type="text" id="gcash-reference" name="gcash-reference" placeholder="e.g., Customer #123, GCash user X">
                             </div>
+
+                            <!-- New fee split inputs -->
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label for="fee-to-gcash">Fee to GCash (₱)</label>
+                                    <input type="number" id="fee-to-gcash" name="fee-to-gcash" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                                <div class="input-group">
+                                    <label for="fee-to-cash">Fee to Cash on Hand (₱)</label>
+                                    <input type="number" id="fee-to-cash" name="fee-to-cash" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                            </div>
+                            <small id="fee-hint" style="color:#666;">Total fee will auto-calc; leave blank to default all to cash.</small>
+
                             <div class="gcash-button-group">
                                 <button type="button" id="cash-in-btn" class="g-cash-btn cash-in">Cash In</button>
                                 <button type="button" id="cash-out-btn" class="g-cash-btn cash-out">Cash Out</button>
@@ -129,6 +142,15 @@
                                         <option value="ecopy">With E-Copy</option>
                                     </select>
                                 </div>
+                                <!-- Added size to align with admin prices -->
+                                <div class="input-group">
+                                    <label for="scan-size">Paper Size</label>
+                                    <select id="scan-size">
+                                        <option value="letter">Letter</option>
+                                        <option value="a4">A4</option>
+                                        <option value="legal">Legal</option>
+                                    </select>
+                                </div>
                                 <div class="input-group">
                                     <label for="scan-pages">Number of Pages</label>
                                     <input type="number" id="scan-pages" placeholder="e.g., 2" min="1" required>
@@ -137,16 +159,15 @@
                             <button type="submit" class="add-job-btn">Add to Transaction</button>
                         </form>
 
-                         <!-- Form for Lamination -->
+                        <!-- Form for Lamination -->
                         <form id="form-lamination" class="service-form" style="display: none;">
                              <div class="form-grid">
                                 <div class="input-group">
                                     <label for="lamination-size">Size</label>
                                     <select id="lamination-size">
-                                        <option value="small">Small (e.g., ID)</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="long_bond">Long Bond</option>
-                                        <option value="short_bond">Short Bond</option>
+                                        <option value="whole_a4">Whole A4</option>
+                                        <option value="half_a4">Half A4</option>
+                                        <option value="quarter_a4">1/4 A4</option>
                                     </select>
                                 </div>
                                 <div class="input-group">

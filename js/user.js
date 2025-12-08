@@ -36,8 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const gcashFeeDisplay = document.getElementById('gcash-fee-display');
     const gcashAmountInput = document.getElementById('gcash-amount');
-    // ADD THIS NEW REFERENCE TO THE INPUT FIELD
-    const gcashReferenceInput = document.getElementById('gcash-reference'); 
+    const gcashReferenceInput = document.getElementById('gcash-reference');
+    const feeToGcashInput = document.getElementById('fee-to-gcash');
+    const feeToCashInput = document.getElementById('fee-to-cash');
     const transactionItemsList = document.getElementById('transaction-items');
     const subtotalDisplay = document.getElementById('subtotal');
     const serviceFeeDisplay = document.getElementById('service-fee');
@@ -243,35 +244,77 @@ document.addEventListener('DOMContentLoaded', () => {
         if (amount <= 9500) return 190;
         if (amount <= 10000) return 200;
         if (amount <= 11000) return 220;
-        return 220; // Default for amounts over 11,000, adjust as needed
+        return 220;
+    }
+
+    // New helpers for fee-split validation
+    const almostEqual = (a, b, eps = 0.01) => Math.abs(a - b) <= eps;
+
+    function validateFeeSplit(totalFee) {
+        const rawG = feeToGcashInput.value.trim();
+        const rawC = feeToCashInput.value.trim();
+
+        // Default: all fee to cash if both are blank
+        if (rawG === '' && rawC === '') {
+            return { feeToGcash: 0, feeToCash: totalFee };
+        }
+
+        const feeToGcash = parseFloat(rawG);
+        const feeToCash = parseFloat(rawC);
+
+        if (isNaN(feeToGcash) || isNaN(feeToCash)) {
+            throw "Enter numbers in both fee fields.";
+        }
+        if (feeToGcash < 0 || feeToCash < 0) {
+            throw "Fees cannot be negative.";
+        }
+
+        const sum = +(feeToGcash + feeToCash).toFixed(2);
+        if (!almostEqual(sum, totalFee)) {
+            throw `Fee split must equal ₱${totalFee.toFixed(2)} (you entered ₱${sum.toFixed(2)}).`;
+        }
+
+        return { feeToGcash, feeToCash };
     }
 
     // --- EVENT HANDLERS ---
     function handleGcashTransaction(type) {
-        const amountInput = document.getElementById('gcash-amount');
-        const amount = parseFloat(amountInput.value);
+        const amount = parseFloat(gcashAmountInput.value);
         if (isNaN(amount) || amount <= 0) {
             alert("Please enter a valid amount.");
             return;
         }
-        
-        // GET THE REFERENCE FROM THE NEW INPUT FIELD
+
         const reference = gcashReferenceInput.value.trim();
-
         const fee = getGcashFee(amount);
-        const description = type === 'in' ? 'GCash Cash In' : 'GCash Cash Out';
-        currentTransactionItems.push({
-            type: `gcash_${type}`,
-            description: description,
-            amount: amount,
-            fee: fee,
-            total: amount + fee, // Total the customer pays (amount + fee)
-            reference: reference || (type === 'in' ? 'Cash In (POS)' : 'Cash Out (POS)') // Add reference to the item
-        });
 
+        let split;
+        try {
+            split = validateFeeSplit(fee);
+        } catch (err) {
+            alert(err);
+            return;
+        }
+        const { feeToGcash, feeToCash } = split;
+
+        const description = type === 'in' ? 'GCash Cash In' : 'GCash Cash Out';
+        const item = {
+            type: `gcash_${type}`,
+            description,
+            amount,
+            fee,
+            feeToGcash,
+            feeToCash,
+            total: amount + fee,
+            reference: reference || (type === 'in' ? 'Cash In (POS)' : 'Cash Out (POS)')
+        };
+
+        currentTransactionItems.push(item);
         renderTransaction();
-        amountInput.value = '';
-        gcashReferenceInput.value = ''; // Clear reference input after adding
+        gcashAmountInput.value = '';
+        gcashReferenceInput.value = '';
+        feeToGcashInput.value = '';
+        feeToCashInput.value = '';
     }
 
     function handleAddService(e) {
@@ -279,7 +322,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const serviceType = document.getElementById('service-type').value;
         let item = null;
 
-        // Check if prices have been loaded at all.
         if (!servicePrices || Object.keys(servicePrices).length === 0) {
              alert("Service prices have not been loaded from the database. Please refresh.");
              return;
@@ -289,77 +331,64 @@ document.addEventListener('DOMContentLoaded', () => {
             switch (serviceType) {
                 case 'printing':
                 case 'photocopy': {
-                    const paperSize = document.getElementById('print-paper-size').value; // e.g., 'a4'
-                    const printType = document.getElementById('print-type').value;     // e.g., 'bw'
+                    const paperSize = document.getElementById('print-paper-size').value; // letter/a4/legal
+                    const printType = document.getElementById('print-type').value;     // bw/color
                     const pages = parseInt(document.getElementById('print-pages').value, 10);
                     if (isNaN(pages) || pages <= 0) return alert("Invalid number of pages.");
 
-                    // 2. Build the key to match your flat Firestore structure
-                    const priceKey = `${serviceType}_${printType}_${paperSize}`; // e.g., "printing_bw_a4"
+                    const priceKey = `price_${serviceType}_${printType}_${paperSize}`;
                     const pricePerPage = servicePrices[priceKey];
-                    
                     if (typeof pricePerPage === 'undefined') {
-                        throw new Error(`Price for '${priceKey}' is not set in your Firestore 'servicePrices' document.`);
+                        throw new Error(`Price for '${priceKey}' is not set in Firestore.`);
                     }
-                    
                     const total = pricePerPage * pages;
                     const description = `${serviceType === 'photocopy' ? 'Photocopy' : 'Printing'}: ${pages} pg(s) (${paperSize}, ${printType === 'bw' ? 'B&W' : 'Color'})`;
                     item = { description, total };
                     break;
                 }
-                
                 case 'scan': {
-                    const scanType = document.getElementById('scan-type').value; // e.g., "scan_only"
+                    const scanType = document.getElementById('scan-type').value; // scan_only / ecopy
+                    const scanSize = document.getElementById('scan-size').value; // letter/a4/legal
                     const pages = parseInt(document.getElementById('scan-pages').value, 10);
                     if (isNaN(pages) || pages <= 0) return alert("Invalid number of pages.");
 
-                    // Assumes you have fields like "scan_only" and "ecopy" in Firestore
-                    const pricePerPage = servicePrices[scanType];
+                    const priceKey = `price_scan_${scanType}_${scanSize}`;
+                    const pricePerPage = servicePrices[priceKey];
                     if (typeof pricePerPage === 'undefined') {
-                        throw new Error(`Price for scan type '${scanType}' is not set in Firestore.`);
+                        throw new Error(`Price for '${priceKey}' is not set in Firestore.`);
                     }
-
                     const total = pricePerPage * pages;
-                    const description = `Scan: ${pages} pg(s) (${scanType === 'ecopy' ? 'with E-Copy' : 'Scan Only'})`;
+                    const description = `Scan: ${pages} pg(s) (${scanSize.toUpperCase()}, ${scanType === 'ecopy' ? 'with E-Copy' : 'Scan Only'})`;
                     item = { description, total };
                     break;
                 }
-
                 case 'lamination': {
-                    const size = document.getElementById('lamination-size').value; // e.g., "small"
+                    const size = document.getElementById('lamination-size').value; // whole_a4 / half_a4 / quarter_a4
                     const qty = parseInt(document.getElementById('lamination-qty').value, 10);
                     if (isNaN(qty) || qty <= 0) return alert("Invalid quantity.");
 
-                    // Assumes you have fields like "lamination_small" in Firestore
-                    const priceKey = `lamination_${size}`;
+                    const priceKey = `price_lamination_${size}`;
                     const pricePerPiece = servicePrices[priceKey];
                     if (typeof pricePerPiece === 'undefined') {
-                        throw new Error(`Price for lamination size '${priceKey}' is not set in Firestore.`);
+                        throw new Error(`Price for '${priceKey}' is not set in Firestore.`);
                     }
-                    
                     const total = pricePerPiece * qty;
                     const description = `Lamination: ${qty} pc(s) (${size.replace('_', ' ')})`;
                     item = { description, total };
                     break;
                 }
-
                 case 'pvc': {
-                    const pvcType = document.getElementById('pvc-type').value; // e.g., "front"
-                    const withEdit = document.getElementById('pvc-edit').value;
+                    const pvcType = document.getElementById('pvc-type').value; // front/back
+                    const withEdit = document.getElementById('pvc-edit').value; // yes/no
                     const qty = parseInt(document.getElementById('pvc-qty').value, 10);
                     if (isNaN(qty) || qty <= 0) return alert("Invalid quantity.");
 
-                    // Assumes fields like "pvc_front", "pvc_back", and "pvc_edit" in Firestore
-                    const priceKey = `pvc_${pvcType}`;
-                    let pricePerPiece = servicePrices[priceKey];
+                    let keyBase = pvcType === 'front' ? 'front' : 'back';
+                    const priceKey = `price_pvc_${keyBase}_${withEdit === 'yes' ? 'edit' : 'print'}`;
+                    const pricePerPiece = servicePrices[priceKey];
                     if (typeof pricePerPiece === 'undefined') {
-                        throw new Error(`Price for PVC type '${priceKey}' is not set in Firestore.`);
+                        throw new Error(`Price for '${priceKey}' is not set in Firestore.`);
                     }
-
-                    if (withEdit === 'yes') {
-                        pricePerPiece += (servicePrices.pvc_edit || 0);
-                    }
-
                     const total = pricePerPiece * qty;
                     const description = `PVC ID: ${qty} pc(s) (${pvcType === 'back' ? 'Back-to-Back' : 'Front Only'}, Edit: ${withEdit})`;
                     item = { description, total };
@@ -368,17 +397,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (item) {
-                // A common structure for all service items
-                const serviceItem = {
+                currentTransactionItems.push({
                     type: 'service',
                     description: item.description,
-                    amount: item.total, // Base amount
-                    fee: 0,           // Services have no separate fee
-                    total: item.total // Total cost for this item
-                };
-                currentTransactionItems.push(serviceItem);
+                    amount: item.total,
+                    fee: 0,
+                    total: item.total
+                });
                 renderTransaction();
-                e.target.reset(); // Clear the form after adding the item
+                e.target.reset();
             }
         } catch (error) {
             console.error("Error calculating price:", error);
@@ -409,98 +436,80 @@ document.addEventListener('DOMContentLoaded', () => {
                 const printingDoc = await transaction.get(printingRef);
                 const cashOnHandDoc = await transaction.get(cashOnHandRef);
 
-                if (!gcashDoc.exists()) {
-                    throw "GCash settings document does not exist!";
-                }
-                if (!cashOnHandDoc.exists()) {
-                    throw "Cash on Hand settings document does not exist! Please set an initial balance in the Admin panel.";
-                }
+                if (!gcashDoc.exists()) throw "GCash settings document does not exist!";
+                if (!cashOnHandDoc.exists()) throw "Cash on Hand settings document does not exist! Please set an initial balance in the Admin panel.";
 
                 let newGcashBalance = gcashDoc.data().balance;
                 let newCashOnHandBalance = cashOnHandDoc.data().balance;
 
-                let gcashInPrincipal = 0; // Amount customer wants to deposit to their GCash
-                let gcashInTotalPaidByCustomer = 0; // Principal + fee, total cash received from customer for cash in
-                let gcashInFee = 0;
-                let gcashInReferences = []; // Collect references for logging
+                let gcashBalanceDelta = 0;
+                let cashOnHandDelta = 0;
 
-                let gcashOutPrincipal = 0; // Amount customer wants to withdraw from their GCash
-                let gcashOutTotalChargedToGcash = 0; // Principal + fee, total charged to customer's GCash for cash out
-                let gcashOutFee = 0;
-                let gcashOutReferences = []; // Collect references for logging
-                
+                let gcashInReferences = [];
+                let gcashOutReferences = [];
 
-                // Calculate separate totals for cash-in and cash-out GCash items
                 currentTransactionItems.forEach(item => {
                     if (item.type === 'gcash_in') {
-                        gcashInPrincipal += item.amount;
-                        gcashInFee += item.fee;
-                        gcashInTotalPaidByCustomer += item.total; // item.amount + item.fee
-                        if (item.reference) gcashInReferences.push(item.reference); // Collect reference
+                        gcashBalanceDelta += (-item.amount + (item.feeToGcash || 0));
+                        cashOnHandDelta += (item.amount + (item.feeToCash || 0));
+                        if (item.reference) gcashInReferences.push(item.reference);
                     } else if (item.type === 'gcash_out') {
-                        gcashOutPrincipal += item.amount;
-                        gcashOutFee += item.fee;
-                        gcashOutTotalChargedToGcash += item.total; // item.amount + item.fee
-                        if (item.reference) gcashOutReferences.push(item.reference); // Collect reference
+                        gcashBalanceDelta += (item.amount + (item.feeToGcash || 0));
+                        cashOnHandDelta += (-item.amount + (item.feeToCash || 0));
+                        if (item.reference) gcashOutReferences.push(item.reference);
                     }
                 });
 
-                // My Digital GCash Balance Logic:
-                // - Cash In: DECREASES by the principal amount (money sent from my GCash to customer's).
-                // - Cash Out: INCREASES by the total amount charged to the customer's GCash (money sent from customer's GCash to mine).
-                newGcashBalance = newGcashBalance - gcashInPrincipal + gcashOutPrincipal;
+                newGcashBalance += gcashBalanceDelta;
+                newCashOnHandBalance += cashOnHandDelta;
 
-
-                // NEW Physical Cash on Hand Logic (Fees for BOTH are handled in cash):
-                // - Cash In: INCREASES by the total cash received from customer (principal + fee).
-                // - Cash Out: DECREASES by the principal given to the customer, but INCREASES by the cash fee received from the customer.
-                newCashOnHandBalance = newCashOnHandBalance + gcashInTotalPaidByCustomer - gcashOutPrincipal + gcashOutFee;
-
-                if (newGcashBalance < 0) {
-                    // Note: This check might be less relevant for cash-out now, but good to keep.
-                    throw "Insufficient GCash balance for this transaction.";
-                }
-                if (newCashOnHandBalance < 0) {
-                    throw "Insufficient Cash on Hand for this transaction.";
-                }
+                if (newGcashBalance < 0) throw "Insufficient GCash balance for this transaction.";
+                if (newCashOnHandBalance < 0) throw "Insufficient Cash on Hand for this transaction.";
 
                 transaction.update(gcashRef, { balance: newGcashBalance });
                 transaction.update(cashOnHandRef, { balance: newCashOnHandBalance });
 
-                // Logging for GCash Cash In/Out changes affecting Cash on Hand
-                if (gcashInPrincipal > 0) {
-                    const cashLogRef = doc(collection(db, "cash_on_hand_logs"));
-                    transaction.set(cashLogRef, {
+                // Logs for gcash_in
+                const gcashInItems = currentTransactionItems.filter(i => i.type === 'gcash_in');
+                if (gcashInItems.length) {
+                    const principal = gcashInItems.reduce((s, i) => s + i.amount, 0);
+                    const feeToCash = gcashInItems.reduce((s, i) => s + (i.feeToCash || 0), 0);
+                    const feeToGcash = gcashInItems.reduce((s, i) => s + (i.feeToGcash || 0), 0);
+                    const logRef = doc(collection(db, "cash_on_hand_logs"));
+                    transaction.set(logRef, {
                         type: 'pos-gcash-cash-in',
-                        cashImpact: gcashInTotalPaidByCustomer, // Total cash received
-                        gcashPrincipalImpact: -gcashInPrincipal, // Principal removed from my digital GCash
-                        gcashFeeCollected: gcashInFee,
-                        newGcashBalance: newGcashBalance, // Snapshot of balance after all changes
-                        newCashOnHandBalance: newCashOnHandBalance, // Snapshot of balance after all changes
-                        // Use collected references for the log
-                        reference: gcashInReferences.length > 0 ? gcashInReferences.join('; ') : 'Customer GCash Cash In (POS)',
+                        cashImpact: cashOnHandDelta, // net cash delta for these items
+                        gcashPrincipalImpact: gcashBalanceDelta, // net digital delta for these items
+                        feeToCash,
+                        feeToGcash,
+                        reference: gcashInReferences.length ? gcashInReferences.join('; ') : 'Customer GCash Cash In (POS)',
                         user: currentUser.username,
-                        timestamp: Timestamp.fromDate(new Date())
+                        timestamp: Timestamp.fromDate(new Date()),
+                        newGcashBalance,
+                        newCashOnHandBalance
                     });
                 }
 
-                if (gcashOutPrincipal > 0) {
-                    const cashLogRef = doc(collection(db, "cash_on_hand_logs"));
-                    transaction.set(cashLogRef, {
+                // Logs for gcash_out
+                const gcashOutItems = currentTransactionItems.filter(i => i.type === 'gcash_out');
+                if (gcashOutItems.length) {
+                    const feeToCash = gcashOutItems.reduce((s, i) => s + (i.feeToCash || 0), 0);
+                    const feeToGcash = gcashOutItems.reduce((s, i) => s + (i.feeToGcash || 0), 0);
+                    const logRef = doc(collection(db, "cash_on_hand_logs"));
+                    transaction.set(logRef, {
                         type: 'pos-gcash-cash-out',
-                        cashImpact: -gcashOutPrincipal, // Cash given out (negative value)
-                        gcashPrincipalImpact: gcashOutTotalChargedToGcash, // Total charged to customer's GCash added to my digital GCash
-                        gcashFeeCollected: gcashOutFee,
-                        newGcashBalance: newGcashBalance, // Snapshot of balance after all changes
-                        newCashOnHandBalance: newCashOnHandBalance, // Snapshot of balance after all changes
-                        // Use collected references for the log
-                        reference: gcashOutReferences.length > 0 ? gcashOutReferences.join('; ') : 'Customer GCash Cash Out (POS)',
+                        cashImpact: cashOnHandDelta, // net cash delta for these items
+                        gcashPrincipalImpact: gcashBalanceDelta,
+                        feeToCash,
+                        feeToGcash,
+                        reference: gcashOutReferences.length ? gcashOutReferences.join('; ') : 'Customer GCash Cash Out (POS)',
                         user: currentUser.username,
-                        timestamp: Timestamp.fromDate(new Date())
+                        timestamp: Timestamp.fromDate(new Date()),
+                        newGcashBalance,
+                        newCashOnHandBalance
                     });
                 }
 
-                // 2. Calculate and update Printing balance
                 const serviceTotal = currentTransactionItems
                     .filter(i => i.type === 'service')
                     .reduce((sum, i) => sum + i.total, 0);
@@ -511,9 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     transaction.set(printingRef, { balance: newPrintingBalance }, { merge: true });
                 }
 
-                // 4. Log the entire transaction
-                const transLogRef = collection(db, "transactions");
-                await addDoc(transLogRef, {
+                await addDoc(collection(db, "transactions"), {
                     user: currentUser.username,
                     timestamp: serverTimestamp(),
                     totalAmount: grandTotal,
@@ -521,13 +528,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            // Success
             transactionMessage.textContent = "Payment completed successfully!";
             transactionMessage.style.color = 'green';
             currentTransactionItems = [];
             renderTransaction();
-            // The functions below will now properly refresh all displays
-            loadDashboardData(); // This will reload both GCash and Cash on Hand balances
+            loadDashboardData();
         } catch (e) {
             console.error("Transaction failed: ", e);
             transactionMessage.textContent = `Transaction failed: ${e}`;
@@ -616,4 +621,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INITIAL LOAD ---
     loadInitialData();
     loadDashboardData();
+
+    // --- GCash Fee Suggestion Logic ---
+    if (gcashAmountInput && gcashFeeDisplay) {
+        gcashAmountInput.addEventListener('input', () => {
+            const amount = parseFloat(gcashAmountInput.value);
+            if (isNaN(amount) || amount <= 0) { gcashFeeDisplay.textContent = ''; return; }
+            const fee = getGcashFee(amount);
+            gcashFeeDisplay.textContent = `Suggested fee: ₱${fee.toFixed(2)} (split as needed)`;
+        });
+    }
 });
