@@ -18,13 +18,18 @@ body {
 }
 
 .main-header {
-    background-color: var(--card-background-color);
-    padding: 0 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 2px 4px var(--shadow-color);
+    padding: 1rem 2rem;
+    background-color: white;
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-center {
+    flex: 1;
+    text-align: center;
 }
 
 .user-info {
@@ -175,6 +180,12 @@ button {
     color: white;
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
+}
+
+#current-datetime {
+    margin: 0;
+    font-size: 0.95rem;
+    color: black;
 }
 
 @media (max-width: 1024px) {

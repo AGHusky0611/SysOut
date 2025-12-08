@@ -51,6 +51,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const todayTransactionCountEl = document.getElementById('today-transaction-count');
     const recentTransactionsTable = document.querySelector('#recent-transactions-table tbody');
 
+    // --- UPDATE DATE AND TIME ---
+    function updateDateTime() {
+        const now = new Date();
+        const dateTimeString = now.toLocaleString('en-PH', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        const dateTimeEl = document.getElementById('current-datetime');
+        if (dateTimeEl) {
+            dateTimeEl.textContent = dateTimeString;
+        }
+    }
+
+    updateDateTime();
+    setInterval(updateDateTime, 1000); // Update every second
+
     // --- DATA FETCHING ---
     async function loadInitialData() {
         try {
