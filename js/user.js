@@ -352,18 +352,18 @@ document.addEventListener('DOMContentLoaded', () => {
             switch (serviceType) {
                 case 'printing':
                 case 'photocopy': {
-                    const paperSize = document.getElementById('print-paper-size').value; // letter/a4/legal
-                    const printType = document.getElementById('print-type').value;     // bw/color
+                    const paperSize = document.getElementById('print-paper-size').value;
+                    const printType = document.getElementById('print-type').value;
                     const pages = parseInt(document.getElementById('print-pages').value, 10);
                     if (isNaN(pages) || pages <= 0) return alert("Invalid number of pages.");
 
-                    const priceKey = `price_${serviceType}_${printType}_${paperSize}`;
+                    const priceKey = `${serviceType}_${printType}_${paperSize}`;
                     const pricePerPage = servicePrices[priceKey];
                     if (typeof pricePerPage === 'undefined') {
                         throw new Error(`Price for '${priceKey}' is not set in Firestore.`);
                     }
                     const total = pricePerPage * pages;
-                    const description = `${serviceType === 'photocopy' ? 'Photocopy' : 'Printing'}: ${pages} pg(s) (${paperSize}, ${printType === 'bw' ? 'B&W' : 'Color'})`;
+                    const description = `${serviceType === 'photocopy' ? 'Photocopy' : 'Printing'}: ${pages} pg(s) (${paperSize.toUpperCase()}, ${printType === 'bw' ? 'B&W' : 'Color'})`;
                     item = { description, total };
                     break;
                 }
@@ -373,7 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const pages = parseInt(document.getElementById('scan-pages').value, 10);
                     if (isNaN(pages) || pages <= 0) return alert("Invalid number of pages.");
 
-                    const priceKey = `price_scan_${scanType}_${scanSize}`;
+                    // FIXED: Don't add 'scan_' prefix since scanType already contains it
+                    const priceKey = `${scanType}_${scanSize}`;
                     const pricePerPage = servicePrices[priceKey];
                     if (typeof pricePerPage === 'undefined') {
                         throw new Error(`Price for '${priceKey}' is not set in Firestore.`);
@@ -384,11 +385,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
                 case 'lamination': {
-                    const size = document.getElementById('lamination-size').value; // whole_a4 / half_a4 / quarter_a4
+                    const size = document.getElementById('lamination-size').value;
                     const qty = parseInt(document.getElementById('lamination-qty').value, 10);
                     if (isNaN(qty) || qty <= 0) return alert("Invalid quantity.");
 
-                    const priceKey = `price_lamination_${size}`;
+                    const priceKey = `lamination_${size}`;
                     const pricePerPiece = servicePrices[priceKey];
                     if (typeof pricePerPiece === 'undefined') {
                         throw new Error(`Price for '${priceKey}' is not set in Firestore.`);
@@ -399,13 +400,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
                 case 'pvc': {
-                    const pvcType = document.getElementById('pvc-type').value; // front/back
-                    const withEdit = document.getElementById('pvc-edit').value; // yes/no
+                    const pvcType = document.getElementById('pvc-type').value;
+                    const withEdit = document.getElementById('pvc-edit').value;
                     const qty = parseInt(document.getElementById('pvc-qty').value, 10);
                     if (isNaN(qty) || qty <= 0) return alert("Invalid quantity.");
 
-                    let keyBase = pvcType === 'front' ? 'front' : 'back';
-                    const priceKey = `price_pvc_${keyBase}_${withEdit === 'yes' ? 'edit' : 'print'}`;
+                    const keyBase = pvcType === 'front' ? 'front' : 'back';
+                    const priceKey = `pvc_${keyBase}_${withEdit === 'yes' ? 'edit' : 'print'}`;
                     const pricePerPiece = servicePrices[priceKey];
                     if (typeof pricePerPiece === 'undefined') {
                         throw new Error(`Price for '${priceKey}' is not set in Firestore.`);
