@@ -296,6 +296,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    // ADD THIS NEW FUNCTION FOR PRINTING SALES MANAGEMENT
+    async function updatePrintingSales(changeAmount, reference) {
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        const messageEl = document.getElementById('printing-sales-message');
+
+        try {
+            await runTransaction(db, async (transaction) => {
+                const printingRef = doc(db, "settings", "printing");
+                const logRef = doc(collection(db, "printing_sales_logs")); // New collection for printing sales logs
+
+                const printingSnap = await transaction.get(printingRef);
+                const currentBalance = printingSnap.exists() ? printingSnap.data().balance : 0;
+                const newBalance = currentBalance + changeAmount;
+
+                if (newBalance < 0) {
+                    throw "Insufficient Printing Sales balance for this deduction.";
+                }
+
+                // 1. Update the balance in the settings document
+                transaction.set(printingRef, { balance: newBalance }, { merge: true });
+
+                // 2. Create a new log document for Printing Sales changes
+                transaction.set(logRef, {
+                    amount: changeAmount,
+                    newBalance: newBalance,
+                    reference: reference || "Admin Adjustment",
+                    type: changeAmount > 0 ? 'add-sales' : 'deduct-sales',
+                    user: currentUser.username,
+                    timestamp: Timestamp.fromDate(new Date())
+                });
+            });
+
+            messageEl.textContent = "Printing Sales updated successfully!";
+            loadPrintingSettings(); // Refresh the displayed balance
+            document.getElementById('printing-sales-change-form').reset();
+
+        } catch (error) {
+            console.error("Printing Sales Transaction failed: ", error);
+            messageEl.textContent = `Failed to update Printing Sales: ${error}`;
+        }
+        setTimeout(() => messageEl.textContent = '', 3000);
+    }
+
     // Load and display all gcash settings
     async function loadGcashSettings() {
         const balanceDisplay = document.getElementById('current-gcash-balance');
@@ -642,7 +685,35 @@ document.addEventListener('DOMContentLoaded', () => {
         deductCashOnHandBtn.addEventListener('click', () => handleCashOnHandChange(false));
     }
 
-    
+    // ADD THIS: Handle Printing Sales Changes (Add/Deduct)
+    const addPrintingSalesBtn = document.getElementById('add-printing-sales-btn');
+    const deductPrintingSalesBtn = document.getElementById('deduct-printing-sales-btn');
+
+    const handlePrintingSalesChange = (isAdd) => {
+        const amountInput = document.getElementById('printing-sales-change-amount');
+        const referenceInput = document.getElementById('printing-sales-change-reference');
+        const messageEl = document.getElementById('printing-sales-message');
+
+        const amount = parseFloat(amountInput.value);
+        const reference = referenceInput.value.trim();
+
+        if (isNaN(amount) || amount <= 0) {
+            messageEl.textContent = "Please enter a valid positive amount.";
+            setTimeout(() => messageEl.textContent = '', 3000);
+            return;
+        }
+
+        const changeAmount = isAdd ? amount : -amount;
+        updatePrintingSales(changeAmount, reference);
+    };
+
+    if (addPrintingSalesBtn) {
+        addPrintingSalesBtn.addEventListener('click', () => handlePrintingSalesChange(true));
+    }
+    if (deductPrintingSalesBtn) {
+        deductPrintingSalesBtn.addEventListener('click', () => handlePrintingSalesChange(false));
+    }
+
     // Handle Printing Balance Update
     const printingBalanceForm = document.getElementById('printing-balance-form');
     if(printingBalanceForm) {
